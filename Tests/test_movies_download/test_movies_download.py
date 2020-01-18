@@ -1,19 +1,22 @@
 import pytest
-from movies_download import MoviesDownload
+from movies_download import DataDownload
 import json
 
 
 @pytest.fixture(scope='module')
 def movies():
     """ Setup """
-    movies = MoviesDownload(file_to_write='plik', titles_to_get='titles.txt')
-    print('START')
+    movies = DataDownload(titles_to_get='titles.txt')
     print(movies.read_titles())
     yield movies
 
 
 # Fixtures
 def test_read_titles(movies):
+    """
+    Testing reading titles from text file
+    :param movies:
+    """
     movies.read_titles()
 
     assert type(movies.titles) is list
@@ -25,11 +28,13 @@ def test_read_titles(movies):
 
 
 def test_get_titles_using_api(movies):
-    movies.get_titles_using_api()
-
-    print(movies.results[0])
+    """
+    Testing the part of the result json file
+    :param movies:
+    """
+    results = movies.get_titles_using_api()
 
     with open('get_titles_using_api_json.json', 'r') as correct_file:
-        result = correct_file.read()
+        correct_json = json.load(correct_file)
 
-    print(result)
+    assert correct_json == results[0]
