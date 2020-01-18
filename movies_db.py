@@ -1,5 +1,7 @@
+import csv
+import sqlite3
+
 import requests
-import _sqlite3
 
 
 class DataDownload:
@@ -16,10 +18,13 @@ class DataDownload:
         Reading titles from a txt file
         """
 
-        with open(self.titles_to_get, 'r') as read_file:
-            for line in read_file:
-                line = line.rstrip('\n')
-                self.titles.append(line)
+        try:
+            with open(self.titles_to_get, 'r') as read_file:
+                for line in read_file:
+                    line = line.rstrip('\n')
+                    self.titles.append(line)
+        except FileNotFoundError as e:
+            raise e
 
     def get_titles_using_api(self):
         """
@@ -44,7 +49,8 @@ class DBConfig:
     """
 
     def __init__(self, db_name):
-        self.conn = _sqlite3.connect(db_name)
+        self.conn = sqlite3.connect(db_name)
+        self.conn.row_factory = sqlite3.Row
         self.c = self.conn.cursor()
 
     def db_create(self):
@@ -81,7 +87,7 @@ class DBConfig:
                     production TEXT,
                     website TEXT)
                 """)
-        except _sqlite3.OperationalError:
+        except sqlite3.OperationalError:
             print('Database with table movies already exists')
 
     def insert_data(self, downloaded_results):
@@ -123,7 +129,7 @@ class DBConfig:
                                     'production': result['Production'],
                                     'website': result['Website']
                                     })
-            except _sqlite3.IntegrityError:
+            except sqlite3.IntegrityError:
                 print(result['Title'] + ' already exists in the database')
 
     def get_data_by_title(self, title):
@@ -135,7 +141,12 @@ class DBConfig:
         self.c.execute("SELECT * FROM movies WHERE title = :title",
                        {'title': title})
 
-        return self.c.fetchall()
+        result = self.c.fetchall()
+
+        if len(result) == 0:
+            raise ValueError('No such title')
+
+        return result
 
     def get_data_sort_by(self, parameter):
         """
@@ -148,4 +159,32 @@ class DBConfig:
 
         self.c.execute(sql_query)
 
-        return self.c.fetchall()
+        result = self.c.fetchall()
+        print(result[0])
+
+        return result
+
+
+class CSVWriter:
+    """
+    Creating csv file
+    """
+
+    @staticmethod
+    def write_csv(title, data):
+        """
+        Saving results query as csv file
+        :param data:
+        :param title:
+        :return:
+        """
+
+        with open(title, 'w') as csv_w:
+            fieldnames = data[0].keys()
+            csv_writer = csv.DictWriter(csv_w, fieldnames=fieldnames, delimiter=',')
+
+            csv_writer.writeheader()
+
+            for result in data:
+                row = dict(result)
+                csv_writer.writerow(row)

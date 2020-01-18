@@ -1,5 +1,7 @@
+import sqlite3
+
 import pytest
-from movies_db import DBConfig, DataDownload
+from movies_db import DBConfig, DataDownload, CSVWriter
 
 
 @pytest.fixture(scope='module')
@@ -48,7 +50,7 @@ def test_insert_data(movies, database):
     database.insert_data(results)
 
     # Test for inserting duplicates
-    database.insert_data(results)
+
 
 
 def test_get_data_by_title(database):
@@ -58,18 +60,13 @@ def test_get_data_by_title(database):
     """
 
     results = database.get_data_by_title('Kac Wawa')
-    not_true = database.get_data_by_title('whatever')
 
-    correct_result = [('Kac Wawa', 2012, 'N/A', '02 Mar 2012', '97 min', 'Comedy', 'Lukasz Karwowski',
-                       'Piotr Czaja, Jacek Samojlowicz, Krzysztof Weglarz',
-                       'Borys Szyc, Sonia Bohosiewicz, Roma Gasiorowska, Miroslaw Zbrojewicz',
-                       'Five buddies take part in a crazy bachelor party of one of them. Meanwhile, the bride and her female friends have a nice time with male strippers. The parties get totally wild and out of control.',
-                       'Polish', 'Poland', 'N/A',
-                       'https://m.media-amazon.com/images/M/MV5BMWVlNjcxYmEtMmYyYy00ZjAwLTk0MWQtY2RhNGM1YmIzMjIxXkEyXkFqcGdeQXVyMTc4MzI2NQ@@._V1_SX300.jpg',
-                       'N/A', 1.4, 675, 'tt2282829', 'movie', 'N/A', 'N/A', 'N/A', 'N/A')]
+    assert len(results) == 1
+    assert results[0]['Title'] == 'Kac Wawa'
 
-    assert results == correct_result
-    assert len(not_true) == 0
+    with pytest.raises(ValueError) as exec_info:
+        results = database.get_data_by_title('KacWawa')
+    print(exec_info.value)
 
 
 def test_get_data_sort_by(database):
@@ -81,15 +78,15 @@ def test_get_data_sort_by(database):
     # Query by year
     results = database.get_data_sort_by('year')
 
-    assert results[0][0] == '1917'
-    assert results[1][0] == 'Joker'
-    assert results[2][0] == 'Kac Wawa'
+    assert results[0]['Title'] == '1917'
+    assert results[1]['Title'] == 'Joker'
+    assert results[2]['Title'] == 'Kac Wawa'
     assert len(results) == 3
 
     # Query by metascore
     results = database.get_data_sort_by('metascore')
 
-    assert results[0][0] == '1917'
-    assert results[1][0] == 'Joker'
+    assert results[0]['Title'] == '1917'
+    assert results[1]['Title'] == 'Joker'
     assert len(results) == 2
 
