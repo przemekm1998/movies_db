@@ -3,6 +3,18 @@ from movies_db import DataDownload
 import json
 
 
+def test_titles_txt():
+    with pytest.raises(FileNotFoundError) as exec_info:
+        movies = DataDownload(titles_to_get='titles1.txt')
+        movies.read_titles()
+    print(exec_info.value)
+
+    with pytest.raises(FileNotFoundError) as exec_info:
+        movies = DataDownload(titles_to_get='titles_empty.txt')
+        movies.read_titles()
+    print(exec_info.value)
+
+
 @pytest.fixture(scope='module')
 def movies():
     """ Setup """

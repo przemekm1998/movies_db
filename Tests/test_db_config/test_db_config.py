@@ -52,7 +52,6 @@ def test_insert_data(movies, database):
     # Test for inserting duplicates
 
 
-
 def test_get_data_by_title(database):
     """
     Testing selecting data by title
@@ -89,4 +88,3 @@ def test_get_data_sort_by(database):
     assert results[0]['Title'] == '1917'
     assert results[1]['Title'] == 'Joker'
     assert len(results) == 2
-
