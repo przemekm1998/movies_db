@@ -125,3 +125,27 @@ class DBConfig:
                                     })
             except _sqlite3.IntegrityError:
                 print(result['Title'] + ' already exists in the database')
+
+    def get_data_by_title(self, title):
+        """
+        Returning data based on inserted title
+        :param title:
+        :return:
+        """
+        self.c.execute("SELECT * FROM movies WHERE title = :title",
+                       {'title': title})
+
+        return self.c.fetchall()
+
+    def get_data_sort_by(self, parameter):
+        """
+        Return data sorted by parameter
+        :param parameter:
+        :return:
+        """
+
+        sql_query = f"SELECT * FROM movies WHERE {parameter} != 'N/A' ORDER BY {parameter} DESC"  # Query to run
+
+        self.c.execute(sql_query)
+
+        return self.c.fetchall()

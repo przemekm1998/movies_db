@@ -1,5 +1,5 @@
 import pytest
-from movies_download import DataDownload
+from movies_db import DataDownload
 import json
 
 
