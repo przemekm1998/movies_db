@@ -4,22 +4,24 @@ import json
 
 
 def test_titles_txt():
+    # Testing the case when file to read from doens't exist
     with pytest.raises(FileNotFoundError) as exec_info:
         movies = DataDownload(titles_to_get='titles1.txt')
         movies.read_titles()
     print(exec_info.value)
 
-    with pytest.raises(FileNotFoundError) as exec_info:
-        movies = DataDownload(titles_to_get='titles_empty.txt')
-        movies.read_titles()
-    print(exec_info.value)
+    # # Testing the case when file to read from is empty
+    # with pytest.raises(IndexError) as exec_info:
+    # movies = DataDownload(titles_to_get='titlest_empty.txt')
+    # movies.read_titles()
+    # results = movies.get_titles_using_api()
+    # print(exec_info.value)
 
 
 @pytest.fixture(scope='module')
 def movies():
     """ Setup """
-    movies = DataDownload(titles_to_get='titles.txt')
-    print(movies.read_titles())
+    movies = DataDownload(titles_to_get='titlest_empty.txt')
     yield movies
 
 

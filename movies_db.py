@@ -1,5 +1,4 @@
 import csv
-import os
 import sqlite3
 
 import requests
@@ -20,6 +19,7 @@ class DataDownload:
         """
 
         try:
+            #  Read from file
             with open(self.titles_to_get, 'r') as read_file:
                 for line in read_file:
                     line = line.rstrip('\n')
@@ -29,7 +29,7 @@ class DataDownload:
 
     def get_titles_using_api(self):
         """
-        Downloading informations about movies based on read titles
+        Downloading information about movies based on read titles
         """
 
         API_KEY = '305043ae'  # API key to use API
@@ -51,12 +51,12 @@ class DBConfig:
 
     def __init__(self, db_name):
         self.conn = sqlite3.connect(db_name)
-        self.conn.row_factory = sqlite3.Row
+        self.conn.row_factory = sqlite3.Row  # Accessible object instead of plain tuple
         self.c = self.conn.cursor()
 
     def db_create(self):
         """
-        Create tables if don't exists
+        Create tables if don't exist
         """
 
         try:
@@ -64,7 +64,7 @@ class DBConfig:
             with self.conn:
                 self.c.execute("""
                     CREATE TABLE movies (
-                    title TEXT PRIMARY KEY,
+                    title TEXT,
                     year INTEGER,
                     rated TEXT,
                     released TEXT,
@@ -86,10 +86,13 @@ class DBConfig:
                     DVD TEXT,
                     boxoffice REAL,
                     production TEXT,
-                    website TEXT)
+                    website TEXT,
+                    PRIMARY KEY (title, year)
+                    );
                 """)
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
             print('Database with table movies already exists')
+            raise e
 
     def insert_data(self, downloaded_results):
         """
@@ -105,7 +108,7 @@ class DBConfig:
                     (:title, :year, :rated, :released, :runtime, :genre, 
                     :director, :writer, :actors, :plot, :language, :country, 
                     :awards, :poster, :metascore, :imdbRating, :imdbVotes, 
-                    :imdbID, :type, :DVD, :boxoffice, :production, :website)""",
+                    :imdbID, :type, :DVD, :boxoffice, :production, :website);""",
                                    {'title': result['Title'],
                                     'year': result['Year'],
                                     'rated': result['Rated'],
@@ -130,8 +133,9 @@ class DBConfig:
                                     'production': result['Production'],
                                     'website': result['Website']
                                     })
-            except sqlite3.IntegrityError:
+            except sqlite3.IntegrityError as e:
                 print(result['Title'] + ' already exists in the database')
+                raise e
 
     def get_data_by_title(self, title):
         """
@@ -143,9 +147,6 @@ class DBConfig:
                        {'title': title})
 
         result = self.c.fetchall()
-
-        if len(result) == 0:
-            raise ValueError('No such title')
 
         return result
 
@@ -186,6 +187,12 @@ class CSVWriter:
 
             csv_writer.writeheader()
 
-            for result in data:
-                row = dict(result)
-                csv_writer.writerow(row)
+            try:
+                # Writing row in csv file for every result
+                for result in data:
+                    row = dict(result)
+                    csv_writer.writerow(row)
+            # List of results is empty
+            except IndexError as e:
+                print('Empty result')
+                raise e
