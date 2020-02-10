@@ -40,19 +40,19 @@ def test_write_csv(database):
 
     # Fail case - not existing parameter
     with pytest.raises(sqlite3.OperationalError) as exec_info:
-        results = database.get_data_sort_by('metascorefajne')  # Not existing param metascorefajne
+        results = database.sort_data(parameter='metascorefajne')  # Not existing param metascorefajne
     print(exec_info.value)
 
     # Faile case - empty result
-    with pytest.raises(IndexError) as exec_info:
-        results = database.get_data_by_title('KacWawa')
-        CSVWriter.write_csv(title='test_metascore.csv', data=results)
-    print(exec_info.value)
+    # with pytest.raises(IndexError) as exec_info:
+    #     results = database.filter_data(parameter='actors', value='KacWawa')
+    #     CSVWriter.write_csv(title='test_metascore.csv', data=results)
+    # print(exec_info.value)
 
     # Single result
-    results = database.get_data_by_title('Kac Wawa')
+    results = database.filter_data(parameter='director', value='Todd Phillips')
     CSVWriter.write_csv(title='test_metascore.csv', data=results)
 
     # Multiple results
-    results = database.get_data_sort_by('metascore')
-    CSVWriter.write_csv(title='test_metascore.csv', data=results)
+    # results = database.sort_data(parameter='metascorefajne')
+    # CSVWriter.write_csv(title='test_metascore.csv', data=results)
