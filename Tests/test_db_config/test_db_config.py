@@ -9,7 +9,7 @@ from movies_db import DBConfig
 def database():
     """ Setup of the database before tests """
 
-    db = DBConfig(db_name='movies_test.sqlite')  # Creating new db
+    db = DBConfig(db_name='resources/movies_test.sqlite')  # Creating new db
     with db.conn:
         db.c.execute("""CREATE TABLE IF NOT EXISTS MOVIES (
                     ID INTEGER PRIMARY KEY,
@@ -25,14 +25,18 @@ def database():
                     AWARDS text, 
                     IMDb_Rating float, 
                     IMDb_votes integer, 
-                    BOX_OFFICE integer );
+                    BOX_OFFICE integer,
+                    UNIQUE(TITLE));
                     """)
 
-        db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
-        db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Memento')""")
-        db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('In Bruges')""")
-        db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Gods')""")
-        db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Godfather')""")
+        try:
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Memento')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('In Bruges')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Gods')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Godfather')""")
+        except sqlite3.IntegrityError:
+            pass
 
     yield db
 
@@ -82,7 +86,7 @@ def test_download_data():
     """
 
     # Creating new database with 1 record just to test json formatting
-    database = DBConfig(db_name='json_movies.sqlite')
+    database = DBConfig(db_name='resources/json_movies.sqlite')
 
     # Fetching empty title
     results = database.get_empty_titles()
@@ -91,7 +95,7 @@ def test_download_data():
     result_json = database.download_data(results)
 
     # Loading the properly formatted json fixture
-    with open('json_movies.json', 'r') as correct_file:
+    with open('resources/json_movies.json', 'r') as correct_file:
         correct_json = json.load(correct_file)
 
     assert correct_json == result_json[0]
@@ -140,8 +144,23 @@ def test_filter_data(database):
     assert results[3]['Title'] == 'The Godfather'  # Data matches expected
 
     # Fail case filtering
-    results = database.filter_data(parameter='year', value='3000')  # No movies made in year 3000
-    assert not results  # Empty results
+    with pytest.raises(IndexError) as exec_info:
+        results = database.filter_data(parameter='year', value='3000')  # No movies made in year 3000
+    print(exec_info.value)
+
+    # Fail case - query by column which doesn't exist
+    with pytest.raises(sqlite3.OperationalError) as exec_info:
+        results = database.filter_data(parameter='metascore', value='5')
+    print(exec_info.value)
+
+    # Filter by cast
+    results = database.filter_data(parameter='cast', value='Tim Robbins')
+
+    assert results is not None
+    assert len(results) == 1
+
+    assert 'Tim Robbins' in results[0]['Cast']
+    assert results[0]['Title'] == 'The Shawshank Redemption'
 
 
 def test_get_data_sort_by(database):
@@ -166,3 +185,33 @@ def test_get_data_sort_by(database):
     assert results[3]['Title'] == 'In Bruges'
     assert results[4]['Title'] == 'Gods'
 
+    # Query by box office
+    results = database.sort_data('box_office')
+
+    # Fail case - query by column which doesn't exist
+    with pytest.raises(sqlite3.OperationalError) as exec_info:
+        results = database.sort_data('metascore')
+    print(exec_info.value)
+
+
+def test_compare(database):
+    """
+    Testing comparing data by parameter
+    :param database:
+    :return:
+    """
+
+    # Compare by imdb_rating
+    titles_to_compare = ['Memento', 'The Godfather']
+    results = database.compare(parameter='imdb_rating', titles_to_compare=titles_to_compare)
+    assert results[0]['Title'] == 'The Godfather'
+
+    # Compare by box office
+    titles_to_compare = ['Memento', 'In Bruges']
+    results = database.compare(parameter='box_office', titles_to_compare=titles_to_compare)
+    assert results[0]['Title'] == 'Memento'
+
+    # Compare by runtime
+    titles_to_compare = ['Gods', 'The Godfather']
+    results = database.compare(parameter='runtime', titles_to_compare=titles_to_compare)
+    assert results[0]['Title'] == 'The Godfather'

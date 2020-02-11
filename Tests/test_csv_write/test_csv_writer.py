@@ -1,58 +1,91 @@
 import sqlite3
 
 import pytest
-from movies_db import DBConfig, DataDownload, CSVWriter
+from movies_db import DBConfig, CSVWriter
 
 
 @pytest.fixture(scope='module')
-def movies():
-    """ Setup of the example data for the tests"""
+def database():
+    """ Setup of the database before tests """
 
-    movies = DataDownload(titles_to_get='titles.txt')
-    movies.read_titles()
-    results = movies.get_titles_using_api()
+    db = DBConfig(db_name='resources/movies_test.sqlite')  # Creating new db
+    with db.conn:
+        db.c.execute("""CREATE TABLE IF NOT EXISTS MOVIES (
+                    ID INTEGER PRIMARY KEY,
+                    TITLE text,
+                    YEAR integer, 
+                    RUNTIME text, 
+                    GENRE text, 
+                    DIRECTOR text, 
+                    CAST text, 
+                    WRITER text, 
+                    LANGUAGE text, 
+                    COUNTRY text, 
+                    AWARDS text, 
+                    IMDb_Rating float, 
+                    IMDb_votes integer, 
+                    BOX_OFFICE integer,
+                    UNIQUE(TITLE));
+                    """)
+
+        try:
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Memento')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('In Bruges')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Gods')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Godfather')""")
+        except sqlite3.IntegrityError:
+            pass
+
+    yield db
+
+    # Teardown - deleting the tested table
+    # db.c.execute("DROP TABLE MOVIES")
+
+
+@pytest.fixture(scope='module')
+def titles(database):
+    """ Getting empty titles from db for all tests """
+
+    results = database.get_empty_titles()  # Getting list of titles
 
     yield results
 
 
 @pytest.fixture(scope='module')
-def database(movies):
-    """ Setup of the database before tests """
+def downloaded_data(database, titles):
+    """ Downloading data once for every test needed """
 
-    # Setup - creating new database
-    db = DBConfig(db_name='movies.db')
-    db.db_create()
-    db.insert_data(movies)
+    result_json = database.download_data(titles)
 
-    yield db
-
-    # Teardown - deleting the tested table
-    drop_table_statement = "DROP TABLE movies"
-    db.c.execute(drop_table_statement)
+    yield result_json
 
 
-def test_write_csv(database):
+def test_write_csv(database, downloaded_data):
     """
     Saving query to csv file
+    :param downloaded_data:
     :param database:
     :return:
     """
 
+    database.update_data(downloaded_data)
+
     # Fail case - not existing parameter
     with pytest.raises(sqlite3.OperationalError) as exec_info:
-        results = database.sort_data(parameter='metascorefajne')  # Not existing param metascorefajne
+        results = database.sort_data(parameter='metascore')  # Not existing param metascore
     print(exec_info.value)
 
     # Faile case - empty result
-    # with pytest.raises(IndexError) as exec_info:
-    #     results = database.filter_data(parameter='actors', value='KacWawa')
-    #     CSVWriter.write_csv(title='test_metascore.csv', data=results)
-    # print(exec_info.value)
+    with pytest.raises(IndexError) as exec_info:
+        results = database.filter_data(parameter='cast', value='Borys Szyc')
+        CSVWriter.write_csv(title='results/test_metascore.csv', data=results)
+    print(exec_info.value)
 
     # Single result
-    results = database.filter_data(parameter='director', value='Todd Phillips')
-    CSVWriter.write_csv(title='test_metascore.csv', data=results)
+    results = database.filter_data(parameter='language', value='English')
+    CSVWriter.write_csv(title='results/test_english.csv', data=results)
 
     # Multiple results
-    # results = database.sort_data(parameter='metascorefajne')
-    # CSVWriter.write_csv(title='test_metascore.csv', data=results)
+    results = database.sort_data(parameter='imdb_rating')
+    CSVWriter.write_csv(title='results/test_imdbRating.csv', data=results)

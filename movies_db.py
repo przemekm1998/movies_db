@@ -2,6 +2,8 @@ import argparse
 import csv
 import sqlite3
 import requests
+from decimal import Decimal
+from re import sub
 
 
 class FileParser:
@@ -49,11 +51,14 @@ class DBConfig:
         :return:
         """
 
-        sql_statement = f"SELECT * FROM {self.movies_table} WHERE director IS NULL"
+        # Statement to execute - if director column is null than everything must be null
+        sql_statement = f"""SELECT {self.movies_table}.title FROM {self.movies_table} 
+                            WHERE director IS NULL"""
+
         self.c.execute(sql_statement)
         titles = self.c.fetchall()
 
-        return [title['Title'] for title in titles]
+        return titles
 
     def download_data(self, titles):
         """
@@ -118,6 +123,14 @@ class DBConfig:
         """
 
         for result in downloaded_results:
+
+            # Converting money to integer
+            money = result['BoxOffice']
+            try:
+                money_value = int(Decimal(sub(r'[^\d.]', '', money)))
+            except Exception:
+                money_value = money
+
             with self.conn:
                 self.c.execute(
                     f"""UPDATE {self.movies_table} 
@@ -146,7 +159,7 @@ class DBConfig:
                      'awards': result['Awards'],
                      'imdbRating': result['imdbRating'],
                      'imdbVotes': result['imdbVotes'],
-                     'boxoffice': result['BoxOffice']
+                     'boxoffice': money_value
                      })
 
     def filter_data(self, parameter, value):
@@ -154,9 +167,21 @@ class DBConfig:
         Returning data based on inserted title
         :return:
         """
-        self.c.execute(f"SELECT * FROM {self.movies_table} WHERE {parameter} LIKE '%{value}%';")
 
-        result = self.c.fetchall()
+        # Statement to run
+        sql_statement = f"""SELECT {self.movies_table}.title, {self.movies_table}.{parameter} 
+                            FROM {self.movies_table}
+                            WHERE {self.movies_table}.{parameter} LIKE '%{value}%';"""
+
+        # Statement execution
+        try:
+            self.c.execute(sql_statement)
+            result = self.c.fetchall()
+        except sqlite3.OperationalError:
+            # Not existing column
+            raise
+
+        self.print_results(results=result)
 
         return result
 
@@ -167,13 +192,79 @@ class DBConfig:
         :return:
         """
 
-        # Query to run
-        sql_query = f"SELECT * FROM {self.movies_table} WHERE {parameter} != 'N/A' ORDER BY {parameter} DESC"
+        # Statement to run
+        sql_statement = f"""SELECT {self.movies_table}.title, {self.movies_table}.{parameter}
+                            FROM {self.movies_table}  
+                            WHERE {self.movies_table}.{parameter} != 'N/A'
+                            ORDER BY {parameter} DESC"""
 
-        self.c.execute(sql_query)
-        result = self.c.fetchall()
+        # Statement execution
+        try:
+            self.c.execute(sql_statement)
+            result = self.c.fetchall()
+        except sqlite3.OperationalError:
+            # Not existing column
+            raise
+
+        self.print_results(results=result)
 
         return result
+
+    def compare(self, parameter, titles_to_compare):
+        """
+        Comparing two titles
+        :param parameter:
+        :param titles_to_compare:
+        :return:
+        """
+
+        title_1 = titles_to_compare[0]
+        title_2 = titles_to_compare[1]
+
+        sql_statement = f"""SELECT {self.movies_table}.title, {self.movies_table}.{parameter}
+                            FROM {self.movies_table}
+                            WHERE {self.movies_table}.title IN ('{title_1}', '{title_2}')
+                            ORDER BY {self.movies_table}.{parameter} desc
+                            LIMIT 1"""
+
+        # Statement execution
+        try:
+            self.c.execute(sql_statement)
+            result = self.c.fetchall()
+        except sqlite3.OperationalError:
+            # Not existing column
+            raise
+
+        self.print_results(results=result)
+
+        return result
+
+    def print_results(self, results):
+        """
+        Print output to console
+        :param results:
+        :return:
+        """
+
+        try:
+            keys = results[0].keys()  # Loading keys
+        except IndexError:
+            # Empty results case
+            raise
+
+        # Printing keys at the top
+        print('\n')  # Styling
+        header = ""
+        for key in keys:
+            header += ('{:30}'.format(str(key)) + " | ")
+        print(header)
+
+        for res in results:
+            ans = ""
+            for key in res.keys():
+                part = res[f'{key}']
+                ans += ('{:30}'.format(str(part)) + " | ")
+            print(ans)
 
 
 class CSVWriter:
@@ -204,20 +295,32 @@ class CSVWriter:
                 row = dict(result)
                 csv_writer.writerow(row)
 
-# class CLInterface:
-#     """
-#     Command Line Interface Class
-#     """
-#
-#     # Creating parser
-#     parser = argparse.ArgumentParser(description='Processing the commands.')
-#
-#     # Loading titles from file and downloading data based on them
-#     parser.add_argument('--read', metavar='read', type=str, help='file to read titles from')
-#
-#     # Reading data from database and writing it to csv
-#     parser.add_argument('--', metavar='print', type=str, help='print input',
-#                         default='eluwina', choices=['gitara', 'siema'])
-#
-#     args = parser.parse_args()
-#     print(args.accumulate(args.integers))
+
+class CLInterface:
+    """
+    Command Line Interface Class
+    """
+
+    @staticmethod
+    def get_args():
+        """
+        Loading arguments given by user
+        :return:
+        """
+
+        # Creating parser
+        parser = argparse.ArgumentParser(description='Processing the commands.')
+
+        # Adding arguments
+        parser.add_argument('--update', metavar='update', type=str, help='update records')
+
+        # Reading data from database and writing it to csv
+        # parser.add_argument('--', metavar='print', type=str, help='print input',
+        #                     default='eluwina', choices=['gitara', 'siema'])
+
+        args = parser.parse_args()
+        print(args.update)
+
+
+if __name__ == "__main__":
+    CLInterface.get_args()
