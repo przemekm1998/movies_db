@@ -46,50 +46,15 @@ class DBConfig:
         :return:
         """
 
-        for result in downloaded_results:
-
-            try:
-                # Converting money to integer
-                money = result['BoxOffice']
-                money_value = Decimal(sub(r'[^\d.]', '', money))
-            except Exception:  # Tried to handle particular exception but can't catch it
-                money_value = result['BoxOffice']
-
-            with self.conn:
-                self.c.execute(
-                    f"""UPDATE {self.movies_table} 
-                        SET year = :year,
-                        runtime = :runtime,
-                        genre = :genre,
-                        director = :director,
-                        cast = :cast,
-                        writer = :writer,
-                        language = :language,
-                        country = :country,
-                        awards = :awards,
-                        imdb_Rating = :imdbRating,
-                        imdb_Votes = :imdbVotes,
-                        box_office = :boxoffice
-                        WHERE title = :title;""",
-                    {'title': result['Title'],
-                     'year': result['Year'],
-                     'runtime': result['Runtime'],
-                     'genre': result['Genre'],
-                     'director': result['Director'],
-                     'writer': result['Writer'],
-                     'cast': result['Actors'],
-                     'language': result['Language'],
-                     'country': result['Country'],
-                     'awards': result['Awards'],
-                     'imdbRating': result['imdbRating'],
-                     'imdbVotes': result['imdbVotes'],
-                     'boxoffice': str(money_value)  # Setting the converted value or 'N/A'
-                     })
-
-        # Changing all of N/A values to NULL because of further conveniance
-        with self.conn:
-            self.c.execute(f"""UPDATE {self.movies_table} SET box_office = NULL 
-                                WHERE box_office = 'N/A';""")
+    @staticmethod
+    def value_updater(table):
+        """
+        Create converter for a given table
+        :param table:
+        :return:
+        """
+        return lambda column, value_to_change, new_value: f"""UPDATE {table} SET {column} = {new_value} 
+                            WHERE {column} = {value_to_change};"""
 
 
 class CommandHandler:
@@ -109,7 +74,7 @@ class CommandHandler:
         raise NotImplementedError
 
     @classmethod
-    def print_results(cls, results):
+    def format_results(cls, results):
         """
         Print output to console
         :param results:
@@ -122,19 +87,19 @@ class CommandHandler:
             # Empty results case
             raise
 
-        # Printing keys at the top
-        print('\n')  # Styling
-        header = ""
+        formatted_results = '\n'  # Newline for styling
         for key in keys:
-            header += ('{:30}'.format(str(key)) + " | ")
-        print(header)
+            formatted_results += ('{:30}'.format(str(key)) + " | ")
+
+        formatted_results += '\n'
 
         for res in results:
-            ans = ""
             for key in res.keys():
                 part = res[f'{key}']
-                ans += ('{:30}'.format(str(part)) + " | ")
-            print(ans)
+                formatted_results += ('{:30}'.format(str(part)) + " | ")
+            formatted_results += '\n'
+
+        return formatted_results
 
 
 class DataUpdater(CommandHandler):
@@ -150,10 +115,23 @@ class DataUpdater(CommandHandler):
         self.api_key = '305043ae'  # static API key to use API
 
     @property
-    def sql_statement(self):
+    def sql_empty_titles_statement(self):
         # Statement to execute - if director column is null than everything must be null
         sql_statement = f"""SELECT {self.db.movies_table}.title FROM {self.db.movies_table} 
-                            WHERE director IS NULL"""
+                        WHERE director IS NULL"""
+        return sql_statement
+
+    @property
+    def sql_data_update_statement(self):
+        # Statement to execute - if director column is null than everything must be null
+        sql_statement = f"""UPDATE {self.db.movies_table} SET year = :year, runtime = :runtime,
+                                   genre = :genre, director = :director, writer = :writer,
+                                   cast = :cast, language = :language,
+                                   country = :country,
+                                   awards = :awards, imdb_Rating = :imdbRating,
+                                   imdb_Votes = :imdbVotes,
+                                   box_office = :boxoffice
+                                WHERE title = :title"""
         return sql_statement
 
     def handle(self, parameter):
@@ -165,13 +143,18 @@ class DataUpdater(CommandHandler):
         # Update: True or False whether the user wanted the update
         if parameter:
             # Getting titles with empty data
-            empty_titles = self.db.execute_statement(sql_statement=self.sql_statement)
+            empty_titles = self.db.execute_statement(sql_statement=self.sql_empty_titles_statement)
 
             # Downloading data for empty titles using API
             api_data = self.download_data(empty_titles)
 
             # Updating database with downloaded data
-            self.db.update_data(api_data)
+            self.update_data(api_data)
+
+            # Changing box office N/A value to null for further conveniance
+            self.na_to_null('box_office')
+
+            return 'Data Updated!'
 
     def download_data(self, titles):
         """
@@ -184,6 +167,45 @@ class DataUpdater(CommandHandler):
             self.results.append(respond)
 
         return self.results
+
+    def update_data(self, downloaded_results):
+
+        def convert_money(money_to_convert):
+            # Converting money to integer
+            try:
+                money_int = Decimal(sub(r'[^\d.]', '', money_to_convert))
+            except Exception:
+                # Tried to handle particular exception but can't catch it
+                return str(money_to_convert)
+
+            return str(money_int)
+
+        for result in downloaded_results:
+            # Converting money
+            money_str = result['BoxOffice']
+            money_to_insert = convert_money(money_str)
+
+            # Inserting data
+            with self.db.conn:
+                self.db.c.execute(self.sql_data_update_statement,
+                                  {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
+                                   'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
+                                   'cast': result['Actors'], 'language': result['Language'],
+                                   'country': result['Country'],
+                                   'awards': result['Awards'], 'imdbRating': result['imdbRating'],
+                                   'imdbVotes': result['imdbVotes'],
+                                   'boxoffice': money_to_insert
+                                   })
+
+    def na_to_null(self, column):
+        # Changing all of N/A values to NULL because of further conveniance
+        na_to_null = DBConfig.value_updater(self.db.movies_table)
+        sql_statement = na_to_null(column, "'N/A'", 'NULL')
+        with self.db.conn:
+            try:
+                self.db.c.execute(sql_statement)
+            except sqlite3.OperationalError:
+                raise  # Not existing column
 
     def get_keyword(self):
         return self.keyword
@@ -203,8 +225,8 @@ class DataSorter(CommandHandler):
     def sql_statement(self):
         # Statement to execute - sorting
         sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.parameter}
-                            FROM {self.db.movies_table}
-                            ORDER BY {self.parameter} DESC"""
+                        FROM {self.db.movies_table}
+                        ORDER BY {self.parameter} DESC"""
         return sql_statement
 
     def handle(self, parameter):
@@ -214,10 +236,8 @@ class DataSorter(CommandHandler):
         # Get the results from db
         results = self.db.execute_statement(self.sql_statement)
 
-        # Print them out
-        self.print_results(results)
-
-        return results
+        # Formating the results to print
+        return self.format_results(results)
 
     def get_keyword(self):
         return self.keyword
@@ -254,7 +274,7 @@ class CSVWriter:
 
 class CLInterface:
     """
-    Command Line Interface Class
+    Command Line Interface
     """
 
     @staticmethod
@@ -276,13 +296,22 @@ class CLInterface:
                             choices=['id', 'title', 'year', 'runtime', 'genre',
                                      'director', 'cast', 'writer', 'language', 'country',
                                      'awards', 'imdb_rating', 'imdb_votes', 'box_office'],
-                            type=str, default='id')
+                            type=str)
+
+        # Filtering records
+        parser.add_argument('--filter_by',
+                            help='filter records, filtering by box office -> earnings > $100,000,000',
+                            action='store', nargs=2, type=str,
+                            metavar=('{director,actor,genre,cast,writer,language,country,box_office}',
+                                     'value'))
 
         args = parser.parse_args()
 
         commands = dict()
+
         commands['update'] = args.update
-        commands['sort_by'] = args.sort_by[0]
+        commands['sort_by'] = args.sort_by
+        # print(args.filter_by[0])
 
         return commands
 
@@ -301,7 +330,7 @@ class Main:
         # Initialization of DB connection
         db = DBConfig(db_name='movies.sqlite')
 
-        # Commands to handle
+        # Available handlers of commands
         handlers = [DataUpdater(db=db), DataSorter(db=db)]
 
         # Parse commands from args
@@ -313,17 +342,20 @@ class Main:
     @staticmethod
     def handle_commands(commands, handlers):
         for key in commands.keys():
-            for handler in handlers:
-                if key == handler.get_keyword():
-                    param = commands[key]
-                    handler.handle(parameter=param)
+            # Handle only not None commands
+            if commands[f'{key}']:
+                for handler in handlers:
+                    if key == handler.get_keyword():
+                        print("key: " + str(key) + " keyword: " + handler.get_keyword())
+                        param = commands[key]
+                        results = handler.handle(parameter=param)
+                        print(results)
 
 
 if __name__ == '__main__':
     Main.main()
 
 # THINGS TO BE REUSED IN THE FUTURE
-
 
 # class FileParser:
 #     """
@@ -347,7 +379,6 @@ if __name__ == '__main__':
 #                     self.titles.append(line)
 #         except FileNotFoundError as e:
 #             raise e
-
 
 # def filter_data(self, parameter, value):
 #     """

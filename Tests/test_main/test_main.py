@@ -49,6 +49,7 @@ def commands():
 
     commands = dict()
     commands['update'] = 'True'
+    commands['sort_by'] = 'Director'
 
     yield commands
 

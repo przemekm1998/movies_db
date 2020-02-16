@@ -7,3 +7,5 @@ def test_get_args():
     """ Getting empty titles from db for all tests """
 
     interface = CLInterface().get_args()  # Getting list of titles
+
+    yield interfac
