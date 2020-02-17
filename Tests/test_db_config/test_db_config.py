@@ -44,45 +44,45 @@ def database():
     db.c.execute("DROP TABLE MOVIES")
 
 
-@pytest.fixture(scope='module')
-def titles(database):
-    """ Getting empty titles from db for all tests """
-
-    results = database.get_empty_titles()  # Getting list of titles
-
-    yield results
-
-
-@pytest.fixture(scope='module')
-def downloaded_data(titles):
-    """ Downloading data once for every test needed """
-
-    data_downloader = DataDownloader()
-    result_json = data_downloader.download_data(titles)
-
-    yield result_json
-
-
-def test_update_data(database, downloaded_data):
-    """
-    Testing updating data
-    """
-
-    # Updating table with downloaded data
-    database.update_data(downloaded_data)
-
-    # Fetching rows with updated data
-    database.c.execute(f"SELECT * FROM MOVIES;")
-    database_data = database.c.fetchall()
-
-    assert database_data is not None
-    assert len(database_data) == 5  # Expected 5 results
-
-    # Comparing downloaded data by API with inserted data
-    assert database_data[0]['Director'] == downloaded_data[0]['Director']
-    assert database_data[1]['Cast'] == downloaded_data[1]['Actors']
-    assert database_data[3]['Runtime'] == downloaded_data[3]['Runtime']
-    assert database_data[4]['imdb_Rating'] == float(downloaded_data[4]['imdbRating'])
+# @pytest.fixture(scope='module')
+# def titles(database):
+#     """ Getting empty titles from db for all tests """
+#
+#     results = database.get_empty_titles()  # Getting list of titles
+#
+#     yield results
+#
+#
+# @pytest.fixture(scope='module')
+# def downloaded_data(titles):
+#     """ Downloading data once for every test needed """
+#
+#     data_downloader = DataDownloader()
+#     result_json = data_downloader.download_data(titles)
+#
+#     yield result_json
+#
+#
+# def test_update_data(database, downloaded_data):
+#     """
+#     Testing updating data
+#     """
+#
+#     # Updating table with downloaded data
+#     database.update_data(downloaded_data)
+#
+#     # Fetching rows with updated data
+#     database.c.execute(f"SELECT * FROM MOVIES;")
+#     database_data = database.c.fetchall()
+#
+#     assert database_data is not None
+#     assert len(database_data) == 5  # Expected 5 results
+#
+#     # Comparing downloaded data by API with inserted data
+#     assert database_data[0]['Director'] == downloaded_data[0]['Director']
+#     assert database_data[1]['Cast'] == downloaded_data[1]['Actors']
+#     assert database_data[3]['Runtime'] == downloaded_data[3]['Runtime']
+#     assert database_data[4]['imdb_Rating'] == float(downloaded_data[4]['imdbRating'])
 
 # def test_filter_data(database):
 #     """

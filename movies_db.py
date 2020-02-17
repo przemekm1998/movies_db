@@ -39,13 +39,6 @@ class DBConfig:
 
         return results
 
-    def update_data(self, downloaded_results):
-        """
-        Inserting downloaded results to the database
-        :param downloaded_results:
-        :return:
-        """
-
     @staticmethod
     def value_updater(table):
         """
@@ -65,18 +58,25 @@ class CommandHandler:
 
     @abstractmethod
     def handle(self, parameter):
-        # Handling commands by specified classes
+        """
+        The main handle function which all handlers must run
+        :param parameter:
+        :return:
+        """
         raise NotImplementedError
 
     @abstractmethod
     def get_keyword(self):
-        # Specific keyword to handle command required
+        """
+        Specific keyword of handler is required to identify it
+        :return:
+        """
         raise NotImplementedError
 
     @classmethod
     def format_results(cls, results):
         """
-        Print output to console
+        Return formatted result
         :param results:
         :return:
         """
@@ -116,22 +116,29 @@ class DataUpdater(CommandHandler):
 
     @property
     def sql_empty_titles_statement(self):
-        # Statement to execute - if director column is null than everything must be null
+        """
+        Statement to execute - if director column is null than everything must be null
+        :return:
+        """
         sql_statement = f"""SELECT {self.db.movies_table}.title FROM {self.db.movies_table} 
                         WHERE director IS NULL"""
         return sql_statement
 
     @property
     def sql_data_update_statement(self):
-        # Statement to execute - if director column is null than everything must be null
-        sql_statement = f"""UPDATE {self.db.movies_table} SET year = :year, runtime = :runtime,
+        """
+        Statement to execute - if director column is null than everything must be null
+        :return:
+        """
+        sql_statement = f"""UPDATE {self.db.movies_table} 
+                            SET year = :year, runtime = :runtime,
                                    genre = :genre, director = :director, writer = :writer,
                                    cast = :cast, language = :language,
                                    country = :country,
                                    awards = :awards, imdb_Rating = :imdbRating,
                                    imdb_Votes = :imdbVotes,
                                    box_office = :boxoffice
-                                WHERE title = :title"""
+                            WHERE title = :title"""
         return sql_statement
 
     def handle(self, parameter):
@@ -159,6 +166,8 @@ class DataUpdater(CommandHandler):
     def download_data(self, titles):
         """
         Downloading data using API
+        :param titles:
+        :return:
         """
 
         for title in titles:
@@ -169,9 +178,18 @@ class DataUpdater(CommandHandler):
         return self.results
 
     def update_data(self, downloaded_results):
+        """
+        Updating the data in the database
+        :param downloaded_results:
+        :return:
+        """
 
         def convert_money(money_to_convert):
-            # Converting money to integer
+            """
+            Converting money to integer
+            :param money_to_convert:
+            :return:
+            """
             try:
                 money_int = Decimal(sub(r'[^\d.]', '', money_to_convert))
             except Exception:
@@ -191,16 +209,21 @@ class DataUpdater(CommandHandler):
                                   {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
                                    'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
                                    'cast': result['Actors'], 'language': result['Language'],
-                                   'country': result['Country'],
-                                   'awards': result['Awards'], 'imdbRating': result['imdbRating'],
-                                   'imdbVotes': result['imdbVotes'],
+                                   'country': result['Country'], 'awards': result['Awards'],
+                                   'imdbRating': result['imdbRating'], 'imdbVotes': result['imdbVotes'],
                                    'boxoffice': money_to_insert
                                    })
 
     def na_to_null(self, column):
-        # Changing all of N/A values to NULL because of further conveniance
+        """
+        Changing all of N/A values to NULL because of further conveniance
+        :param column:
+        :return:
+        """
+
         na_to_null = DBConfig.value_updater(self.db.movies_table)
         sql_statement = na_to_null(column, "'N/A'", 'NULL')
+
         with self.db.conn:
             try:
                 self.db.c.execute(sql_statement)
@@ -223,13 +246,21 @@ class DataSorter(CommandHandler):
 
     @property
     def sql_statement(self):
-        # Statement to execute - sorting
+        """
+        Statement to execute - sorting
+        :return:
+        """
         sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.parameter}
                         FROM {self.db.movies_table}
                         ORDER BY {self.parameter} DESC"""
         return sql_statement
 
     def handle(self, parameter):
+        """
+        Handling the sorting command request
+        :return:
+        """
+
         # Setting the parameter
         self.parameter = parameter
 
@@ -327,6 +358,7 @@ class Main:
         Main program function
         :return:
         """
+
         # Initialization of DB connection
         db = DBConfig(db_name='movies.sqlite')
 
@@ -341,12 +373,18 @@ class Main:
 
     @staticmethod
     def handle_commands(commands, handlers):
+        """
+        Handling every command request by available handlers
+        :param commands:
+        :param handlers:
+        :return:
+        """
+
         for key in commands.keys():
             # Handle only not None commands
             if commands[f'{key}']:
                 for handler in handlers:
                     if key == handler.get_keyword():
-                        print("key: " + str(key) + " keyword: " + handler.get_keyword())
                         param = commands[key]
                         results = handler.handle(parameter=param)
                         print(results)
