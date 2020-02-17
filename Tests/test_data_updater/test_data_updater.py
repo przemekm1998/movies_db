@@ -94,25 +94,19 @@ def downloaded_data(data_updater, empty_titles):
     del downloaded_data
 
 
-@pytest.mark.parametrize('index, title',
-                         [
-                             (0, 'The Shawshank Redemption'),
-                             (1, 'Memento'),
-                             (2, 'In Bruges'),
-                             (3, 'Gods'),
-                             (4, 'The Godfather')
-                         ])
-def test_empty_titles(empty_titles, index, title):
+def test_empty_titles(empty_titles):
     """
     Testing getting the list of empty titles
-    :param title:
-    :param index:
     :param empty_titles:
     :return:
     """
 
     # Testing the results of getting list of empty titles
-    assert empty_titles[index]['Title'] == title
+    assert empty_titles[0]['Title'] == 'The Shawshank Redemption'
+    assert empty_titles[1]['Title'] == 'Memento'
+    assert empty_titles[2]['Title'] == 'In Bruges'
+    assert empty_titles[3]['Title'] == 'Gods'
+    assert empty_titles[4]['Title'] == 'The Godfather'
 
 
 def test_download_data(downloaded_data):

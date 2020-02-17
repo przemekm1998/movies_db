@@ -2,7 +2,7 @@ import json
 import sqlite3
 
 import pytest
-from movies_db import DBConfig, DataDownloader
+from movies_db import DBConfig
 
 
 @pytest.fixture(scope='module')
@@ -43,6 +43,17 @@ def database():
     # Teardown - deleting the tested table
     db.c.execute("DROP TABLE MOVIES")
 
+
+def test_execute_statement(database):
+    """
+    Testing the fail case
+    :param database:
+    :return:
+    """
+
+    with pytest.raises(sqlite3.OperationalError) as exec_info:
+        results = database.execute_statement('fail_case')
+    print(exec_info.value)
 
 # @pytest.fixture(scope='module')
 # def titles(database):

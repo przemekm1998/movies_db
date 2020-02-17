@@ -14,7 +14,7 @@ def data_sorter():
     yield data_sorter
 
 
-def test_get_data_sort_by(data_sorter):
+def test_handle(data_sorter):
     """
     Testing sorting data by parameter
     :param data_sorter:
@@ -22,6 +22,9 @@ def test_get_data_sort_by(data_sorter):
 
     # Query by year
     results = data_sorter.handle('year')
+    assert results
+    assert len(results) == 5
+
     assert results[0]['Title'] == 'Gods'
     assert results[1]['Title'] == 'In Bruges'
     assert results[2]['Title'] == 'Memento'
@@ -30,6 +33,9 @@ def test_get_data_sort_by(data_sorter):
 
     # Query by imdb rating
     results = data_sorter.handle('imdb_rating')
+    assert results
+    assert len(results) == 5
+
     assert results[0]['Title'] == 'The Shawshank Redemption'
     assert results[1]['Title'] == 'The Godfather'
     assert results[2]['Title'] == 'Memento'
@@ -38,6 +44,9 @@ def test_get_data_sort_by(data_sorter):
 
     # Query by box office
     results = data_sorter.handle('box_office')
+    assert results
+    assert len(results) == 5
+
     assert results[0]['Title'] == 'Memento'
     assert results[1]['Title'] == 'In Bruges'
     assert results[2]['box_office'] is None

@@ -73,34 +73,6 @@ class CommandHandler:
         """
         raise NotImplementedError
 
-    @classmethod
-    def format_results(cls, results):
-        """
-        Return formatted result
-        :param results:
-        :return:
-        """
-
-        try:
-            keys = results[0].keys()  # Loading keys
-        except IndexError:
-            # Empty results case
-            raise
-
-        formatted_results = '\n'  # Newline for styling
-        for key in keys:
-            formatted_results += ('{:30}'.format(str(key)) + " | ")
-
-        formatted_results += '\n'
-
-        for res in results:
-            for key in res.keys():
-                part = res[f'{key}']
-                formatted_results += ('{:30}'.format(str(part)) + " | ")
-            formatted_results += '\n'
-
-        return formatted_results
-
 
 class DataUpdater(CommandHandler):
     """
@@ -236,13 +208,14 @@ class DataUpdater(CommandHandler):
 
 class DataSorter(CommandHandler):
     """
-    Handling the sort command request
+    Handling the filter command request
     """
 
     def __init__(self, db):
-        self.keyword = 'sort_by'
+        self.keyword = 'filter_by'
         self.db = db  # DB to update
         self.parameter = None
+        self.value = None
 
     @property
     def sql_statement(self):
@@ -265,10 +238,59 @@ class DataSorter(CommandHandler):
         self.parameter = parameter
 
         # Get the results from db
-        results = self.db.execute_statement(self.sql_statement)
+        try:
+            results = self.db.execute_statement(self.sql_statement)
+        except sqlite3.OperationalError as e:
+            raise e
 
-        # Formating the results to print
-        return self.format_results(results)
+        # Return of the results
+        return results
+
+    def get_keyword(self):
+        return self.keyword
+
+
+class DataFilter(CommandHandler):
+    """
+    Handling the filtering command request
+    """
+
+    def __init__(self, db):
+        self.keyword = 'sort_by'
+        self.db = db  # DB to update
+        self.column = None
+        self.value = None
+
+    def handle(self, parameter):
+        """
+        Handling the filtering request
+        :param parameter:
+        :return:
+        """
+
+        # Retreiving column name and value to filter by
+        self.column = parameter[0]
+        self.value = parameter[1]
+
+        # Getting the results from the db
+        try:
+            results = self.db.execute_statement(self.sql_statement)
+        except sqlite3.OperationalError as e:
+            raise e
+
+        # Return the results
+        return results
+
+    @property
+    def sql_statement(self):
+        """
+        Statement to execute - sorting
+        :return:
+        """
+        sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
+                            FROM {self.db.movies_table}
+                            WHERE {self.db.movies_table}.{self.column} LIKE '%{self.value}%';"""
+        return sql_statement
 
     def get_keyword(self):
         return self.keyword
@@ -372,6 +394,34 @@ class Main:
         Main.handle_commands(commands=commands, handlers=handlers)
 
     @staticmethod
+    def format_results(results):
+        """
+        Return formatted result
+        :param results:
+        :return:
+        """
+
+        try:
+            keys = results[0].keys()  # Loading keys
+        except IndexError:
+            # Empty results case
+            raise
+
+        formatted_results = '\n'  # Newline for styling
+        for key in keys:
+            formatted_results += ('{:30}'.format(str(key)) + " | ")
+
+        formatted_results += '\n'
+
+        for res in results:
+            for key in res.keys():
+                part = res[f'{key}']
+                formatted_results += ('{:30}'.format(str(part)) + " | ")
+            formatted_results += '\n'
+
+        return formatted_results
+
+    @staticmethod
     def handle_commands(commands, handlers):
         """
         Handling every command request by available handlers
@@ -386,8 +436,14 @@ class Main:
                 for handler in handlers:
                     if key == handler.get_keyword():
                         param = commands[key]
-                        results = handler.handle(parameter=param)
-                        print(results)
+                        try:
+                            results = handler.handle(parameter=param)
+                            formatted_results = Main.format_results(results)
+                            print(formatted_results)
+                        except sqlite3.OperationalError as e:
+                            print(e)
+                        except IndexError:
+                            print(results)
 
 
 if __name__ == '__main__':
