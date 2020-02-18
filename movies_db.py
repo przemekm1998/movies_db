@@ -123,6 +123,7 @@ class DataUpdater(CommandHandler):
         if parameter:
             # Getting titles with empty data
             empty_titles = self.db.execute_statement(sql_statement=self.sql_empty_titles_statement)
+            empty_titles = [title['Title'] for title in empty_titles]  # Convrting SQL Row Objects to str
 
             # Downloading data for empty titles using API
             api_data = self.download_data(empty_titles)
@@ -133,7 +134,7 @@ class DataUpdater(CommandHandler):
             # Changing box office N/A value to null for further conveniance
             self.na_to_null('box_office')
 
-            return 'Data Updated!'
+            return str(empty_titles) + " updated!"
 
     def download_data(self, titles):
         """
@@ -212,7 +213,7 @@ class DataSorter(CommandHandler):
     """
 
     def __init__(self, db):
-        self.keyword = 'filter_by'
+        self.keyword = 'sort_by'
         self.db = db  # DB to update
         self.parameter = None
         self.value = None
@@ -256,8 +257,9 @@ class DataFilter(CommandHandler):
     """
 
     def __init__(self, db):
-        self.keyword = 'sort_by'
-        self.db = db  # DB to update
+        self.keyword = 'filter_by'
+        self.db = db
+
         self.column = None
         self.value = None
 
@@ -290,6 +292,57 @@ class DataFilter(CommandHandler):
         sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
                             FROM {self.db.movies_table}
                             WHERE {self.db.movies_table}.{self.column} LIKE '%{self.value}%';"""
+        return sql_statement
+
+    def get_keyword(self):
+        return self.keyword
+
+
+class DataCompare(CommandHandler):
+    """
+    Comparing two titles
+    """
+
+    def __init__(self, db):
+        self.keyword = 'compare'
+        self.db = db
+
+        self.column = None
+        self.movie_1 = None
+        self.movie_2 = None
+
+    def handle(self, parameter):
+        """
+        Handling the filtering request
+        :param parameter:
+        :return:
+        """
+
+        # Retreiving column name and titles of 1st and 2nd movie
+        self.column = parameter[0]
+        self.movie_1 = parameter[1]
+        self.movie_2 = parameter[2]
+
+        # Getting the results from the db
+        try:
+            results = self.db.execute_statement(self.sql_statement)
+        except sqlite3.OperationalError as e:
+            raise e
+
+        # Return the results
+        return results
+
+    @property
+    def sql_statement(self):
+        """
+        Statement to execute - sorting
+        :return:
+        """
+        sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
+                            FROM {self.db.movies_table}
+                            WHERE {self.db.movies_table}.title IN ('{self.movie_1}', '{self.movie_2}')
+                            ORDER BY {self.db.movies_table}.{self.column} desc
+                            LIMIT 1"""
         return sql_statement
 
     def get_keyword(self):
@@ -352,11 +405,12 @@ class CLInterface:
                             type=str)
 
         # Filtering records
-        parser.add_argument('--filter_by',
-                            help='filter records, filtering by box office -> earnings > $100,000,000',
-                            action='store', nargs=2, type=str,
-                            metavar=('{director,actor,genre,cast,writer,language,country,box_office}',
-                                     'value'))
+        parser.add_argument('--filter_by', help='filter records', action='store', nargs=2, type=str,
+                            metavar=('column', 'value'))
+
+        # Comparing records
+        parser.add_argument('--compare', help='comparing records', action='store', nargs=3, type=str,
+                            metavar=('column', 'movie1', 'movie2'))
 
         args = parser.parse_args()
 
@@ -364,6 +418,8 @@ class CLInterface:
 
         commands['update'] = args.update
         commands['sort_by'] = args.sort_by
+        commands['filter_by'] = args.filter_by
+        commands['compare'] = args.compare
         # print(args.filter_by[0])
 
         return commands
@@ -385,7 +441,7 @@ class Main:
         db = DBConfig(db_name='movies.sqlite')
 
         # Available handlers of commands
-        handlers = [DataUpdater(db=db), DataSorter(db=db)]
+        handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db), DataCompare(db=db)]
 
         # Parse commands from args
         commands = CLInterface.get_args()
@@ -406,6 +462,9 @@ class Main:
         except IndexError:
             # Empty results case
             raise
+        except AttributeError:
+            # Ready to print string
+            return results
 
         formatted_results = '\n'  # Newline for styling
         for key in keys:
@@ -441,9 +500,12 @@ class Main:
                             formatted_results = Main.format_results(results)
                             print(formatted_results)
                         except sqlite3.OperationalError as e:
-                            print(e)
+                            print(str(e))
                         except IndexError:
-                            print(results)
+                            print(handler.get_keyword() + ' error: No results found for ' + str(param))
+                        except ValueError as e:
+                            print(str(e))
+                        break
 
 
 if __name__ == '__main__':

@@ -1,7 +1,7 @@
 import sqlite3
 
 import pytest
-from movies_db import Main, DataUpdater, DBConfig
+from movies_db import Main, DataUpdater, DBConfig, DataSorter, DataFilter, DataCompare
 
 
 @pytest.fixture(scope='module')
@@ -44,12 +44,14 @@ def database():
 
 
 @pytest.fixture(scope='module')
-def commands():
+def commands_working():
     """ Fixture of commands to test """
 
     commands = dict()
     commands['update'] = 'True'
     commands['sort_by'] = 'Director'
+    commands['filter_by'] = ['language', 'English']
+    commands['compare'] = ['box_office', 'Memento', 'The Shawshank Redemption']
 
     yield commands
 
@@ -58,10 +60,10 @@ def commands():
 def handlers(database):
     """ Fixture of handlers to test """
 
-    handlers = [DataUpdater(database)]
+    handlers = [DataUpdater(database), DataSorter(database), DataFilter(database), DataCompare(database)]
 
     yield handlers
 
 
-def test_handle_commands(commands, handlers):
-    Main.handle_commands(commands, handlers)
+def test_handle_commands(commands_working, handlers):
+    Main.handle_commands(commands_working, handlers)
