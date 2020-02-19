@@ -158,24 +158,27 @@ class DataUpdater(CommandHandler):
         :return:
         """
 
-        def convert_money(money_to_convert):
+        def convert_integers(int_to_convert):
             """
             Converting money to integer
-            :param money_to_convert:
             :return:
             """
             try:
-                money_int = Decimal(sub(r'[^\d.]', '', money_to_convert))
+                money_int = Decimal(sub(r'[^\d.]', '', int_to_convert))
             except Exception:
                 # Tried to handle particular exception but can't catch it
-                return str(money_to_convert)
+                return str(int_to_convert)
 
             return str(money_int)
 
         for result in downloaded_results:
             # Converting money
             money_str = result['BoxOffice']
-            money_to_insert = convert_money(money_str)
+            money_to_insert = convert_integers(money_str)
+
+            # Converting votes
+            votes_str = result['imdbVotes']
+            votes_to_insert = convert_integers(votes_str)
 
             # Inserting data
             with self.db.conn:
@@ -184,7 +187,7 @@ class DataUpdater(CommandHandler):
                                    'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
                                    'cast': result['Actors'], 'language': result['Language'],
                                    'country': result['Country'], 'awards': result['Awards'],
-                                   'imdbRating': result['imdbRating'], 'imdbVotes': result['imdbVotes'],
+                                   'imdbRating': result['imdbRating'], 'imdbVotes': votes_to_insert,
                                    'boxoffice': money_to_insert
                                    })
 
@@ -461,6 +464,53 @@ class DataDelete(CommandHandler):
             raise
 
         print(str(title) + " deleted from the database!")
+
+    def get_keyword(self):
+        return self.keyword
+
+
+class DataHighscores(CommandHandler):
+    """
+    Showing highscores
+    """
+
+    def __init__(self, db):
+        self.keyword = 'highscores'
+        self.db = db
+
+        self.columns = ['RUNTIME', 'IMDb_Rating', 'BOX_OFFICE', 'IMDb_votes']
+        self.col_name = None
+
+    @property
+    def sql_statement(self):
+        """
+        Statement to execute - get highscore with column name
+        :return:
+        """
+        sql_statement = f"""SELECT name as col_name, MAX({self.db.movies_table}.{self.col_name}) as max_val, 
+                            {self.db.movies_table}.title
+                            FROM PRAGMA_TABLE_INFO('{self.db.movies_table}')
+                            JOIN {self.db.movies_table}
+                            ON name = '{self.col_name}';"""
+        return sql_statement
+
+    def handle(self, parameter):
+        """
+        Handle the highscores request
+        :param parameter:
+        :return:
+        """
+
+        if parameter:
+            # For every column execute the sql statement and add results to the list of results
+            results = []
+            for column in self.columns:
+                self.col_name = column
+                result = self.db.execute_statement(self.sql_statement)
+                results.append(result[0])
+
+            # Return the information about inserted data
+            return results
 
     def get_keyword(self):
         return self.keyword
