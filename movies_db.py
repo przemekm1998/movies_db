@@ -35,6 +35,7 @@ class DBConfig:
         except sqlite3.OperationalError:
             # Not existing column
             raise
+
         results = self.c.fetchall()
 
         return results
@@ -286,7 +287,7 @@ class DataFilter(CommandHandler):
     @property
     def sql_statement(self):
         """
-        Statement to execute - sorting
+        Statement to execute - filtering
         :return:
         """
         sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
@@ -335,7 +336,7 @@ class DataCompare(CommandHandler):
     @property
     def sql_statement(self):
         """
-        Statement to execute - sorting
+        Statement to execute - comparing
         :return:
         """
         sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
@@ -344,6 +345,122 @@ class DataCompare(CommandHandler):
                             ORDER BY {self.db.movies_table}.{self.column} desc
                             LIMIT 1"""
         return sql_statement
+
+    def get_keyword(self):
+        return self.keyword
+
+
+class DataInsert(CommandHandler):
+    """
+    Inserting new title
+    """
+
+    def __init__(self, db):
+        self.keyword = 'insert'
+        self.db = db
+        self.title_to_write = None
+
+    @property
+    def sql_statement(self):
+        """
+        Statement to execute - inserting
+        :return:
+        """
+        sql_statement = f"""INSERT INTO {self.db.movies_table}(title)
+                            VALUES('{self.title_to_write}')"""
+        return sql_statement
+
+    def handle(self, parameter):
+        """
+        Handle the insert title request
+        :param parameter:
+        :return:
+        """
+
+        # Inserting every or single title given by user
+        if type(parameter) is list:
+            for title in parameter:
+                self.insert_title(title)
+        else:
+            self.insert_title(parameter)
+
+        # Return the information about inserted data
+        return 'All titles successfully added!'
+
+    def insert_title(self, title):
+        """
+        Inserting the title to the db
+        :param title:
+        :return:
+        """
+        self.title_to_write = title
+
+        try:
+            self.db.c.execute(self.sql_statement)
+        except sqlite3.OperationalError:
+            raise
+        except sqlite3.IntegrityError:
+            raise
+
+        print(str(title) + " added to the db!")
+
+    def get_keyword(self):
+        return self.keyword
+
+
+class DataDelete(CommandHandler):
+    """
+    Deleting title or titles
+    """
+
+    def __init__(self, db):
+        self.keyword = 'delete'
+        self.db = db
+        self.title_to_delete = None
+
+    @property
+    def sql_statement(self):
+        """
+        Statement to execute - inserting
+        :return:
+        """
+        sql_statement = f"""DELETE FROM {self.db.movies_table}
+                            WHERE title = '{self.title_to_delete}'"""
+        return sql_statement
+
+    def handle(self, parameter):
+        """
+        Handle the delete title request
+        :param parameter:
+        :return:
+        """
+
+        # Inserting every or single title given by user
+        if type(parameter) is list:
+            for title in parameter:
+                self.delete_title(title)
+        else:
+            self.delete_title(parameter)
+
+        # Return the information about inserted data
+        return 'All titles successfully deleted!'
+
+    def delete_title(self, title):
+        """
+        Deleting the title from the db
+        :param title:
+        :return:
+        """
+        self.title_to_delete = title
+
+        try:
+            self.db.c.execute(self.sql_statement)
+        except sqlite3.OperationalError:
+            raise
+        except sqlite3.IntegrityError:
+            raise
+
+        print(str(title) + " deleted from the database!")
 
     def get_keyword(self):
         return self.keyword
@@ -412,6 +529,14 @@ class CLInterface:
         parser.add_argument('--compare', help='comparing records', action='store', nargs=3, type=str,
                             metavar=('column', 'movie1', 'movie2'))
 
+        # Inserting titles
+        parser.add_argument('--insert', help='inserting records', action='store', nargs='+', type=str,
+                            metavar='title')
+
+        # Deleting titles
+        parser.add_argument('--delete', help='deleting records', action='store', nargs='+', type=str,
+                            metavar='title')
+
         args = parser.parse_args()
 
         commands = dict()
@@ -420,6 +545,8 @@ class CLInterface:
         commands['sort_by'] = args.sort_by
         commands['filter_by'] = args.filter_by
         commands['compare'] = args.compare
+        commands['insert'] = args.insert
+        commands['delete'] = args.delete
         # print(args.filter_by[0])
 
         return commands
@@ -441,7 +568,8 @@ class Main:
         db = DBConfig(db_name='movies.sqlite')
 
         # Available handlers of commands
-        handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db), DataCompare(db=db)]
+        handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db), DataCompare(db=db), DataInsert(db=db),
+                    DataDelete(db=db)]
 
         # Parse commands from args
         commands = CLInterface.get_args()

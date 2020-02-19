@@ -1,7 +1,7 @@
 import sqlite3
 
 import pytest
-from movies_db import Main, DataUpdater, DBConfig, DataSorter, DataFilter, DataCompare, DataInsert, DataDelete
+from movies_db import DBConfig, DataDelete
 
 
 @pytest.fixture(scope='module')
@@ -44,28 +44,54 @@ def database():
 
 
 @pytest.fixture(scope='module')
-def commands_working():
-    """ Fixture of commands to test """
+def data_delete(database):
+    """
+    Setup the data insert class before tests
+    :param database:
+    :return:
+    """
 
-    commands = dict()
-    commands['update'] = 'True'
-    commands['sort_by'] = 'Director'
-    commands['filter_by'] = ['language', 'English']
-    commands['compare'] = ['box_office', 'Memento', 'The Shawshank Redemption']
-    commands['insert'] = ['Kac Wawa', '1917']
+    # Setup
+    data_insert = DataDelete(db=database)
+    yield data_insert
 
-    yield commands
+    # Teardown
+    del data_insert
 
 
 @pytest.fixture(scope='module')
-def handlers(database):
-    """ Fixture of handlers to test """
+def titles_to_delete(database):
+    """
+    Setup the titles to insert insert before tests
+    :param database:
+    :return:
+    """
 
-    handlers = [DataUpdater(database), DataSorter(database), DataFilter(database), DataCompare(database),
-                DataInsert(database), DataDelete(database)]
+    # Setup
+    titles_to_delete = ['Memento', 'In Bruges']
+    yield titles_to_delete
 
-    yield handlers
+    # Teardown
+    del titles_to_delete
 
 
-def test_handle_commands(commands_working, handlers):
-    Main.handle_commands(commands_working, handlers)
+def test_handle(data_delete, titles_to_delete, database):
+    """
+    Testing the handle method
+    :param titles_to_delete:
+    :param data_delete:
+    :param database:
+    :return:
+    """
+
+    # Testing corectness of the output
+    result = data_delete.handle(parameter=titles_to_delete)
+    assert result == 'All titles successfully deleted!'
+
+    # Testing if titles are deleted from the db
+    sql_statement = f"SELECT * FROM {database.movies_table}"
+    results = database.execute_statement(sql_statement)
+
+    results = [result['Title'] for result in results]
+
+    assert titles_to_delete not in results
