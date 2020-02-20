@@ -1,7 +1,7 @@
 import sqlite3
 
 import pytest
-from movies_db import DBConfig, CSVWriter
+from movies_db import DBConfig, CSVWriter, DataFilter, DataSorter, DataUpdater
 
 
 @pytest.fixture(scope='module')
@@ -44,48 +44,93 @@ def database():
 
 
 @pytest.fixture(scope='module')
-def titles(database):
-    """ Getting empty titles from db for all tests """
-
-    results = database.get_empty_titles()  # Getting list of titles
-
-    yield results
-
-
-@pytest.fixture(scope='module')
-def downloaded_data(database, titles):
-    """ Downloading data once for every test needed """
-
-    result_json = database.download_data(titles)
-
-    yield result_json
-
-
-def test_write_csv(database, downloaded_data):
+def csv_writer(database):
     """
-    Saving query to csv file
-    :param downloaded_data:
+    Setup of the CSV Writer class
     :param database:
     :return:
     """
 
-    database.update_data(downloaded_data)
+    csv_writer = CSVWriter()
 
-    # Fail case - not existing parameter
-    with pytest.raises(sqlite3.OperationalError) as exec_info:
-        results = database.sort_data(parameter='metascore')  # Not existing param metascore
-    print(exec_info.value)
+    yield csv_writer
 
-    # Faile case - empty result
+
+@pytest.fixture(scope='module')
+def data_sorter(database):
+    """
+    Setup of the data sorter class
+    :param database:
+    :return:
+    """
+
+    data_sorter = DataSorter(database)
+
+    yield data_sorter
+
+
+@pytest.fixture(scope='module')
+def data_filter(database):
+    """
+    Setup of the data sorter class
+    :param database:
+    :return:
+    """
+
+    data_filter = DataFilter(database)
+
+    yield data_filter
+
+
+@pytest.fixture(scope='module')
+def data_update(database):
+    """
+    Setup of the data sorter class
+    :param database:
+    :return:
+    """
+
+    data_update = DataUpdater(database)
+
+    yield data_update
+
+
+def test_create_title(csv_writer, data_sorter, data_filter):
+    """
+    Testing creating the title
+    :param data_filter:
+    :param data_sorter:
+    :param csv_writer:
+    :return:
+    """
+
+    keyword = data_sorter.get_keyword()
+    title = csv_writer.create_title(keyword)
+    assert keyword in title
+
+    keyword = data_filter.get_keyword()
+    title = csv_writer.create_title(keyword)
+    assert keyword in title
+
+
+def test_write_csv(data_sorter, data_filter, csv_writer, data_update):
+    """
+    Saving query to csv file
+    :param data_update:
+    :param csv_writer:
+    :param data_filter:
+    :param data_sorter:
+    :return:
+    """
+
+    sorted_data = data_sorter.handle(parameter='box_office')
+    csv_writer.write_csv(keyword=data_sorter.get_keyword(), data=sorted_data)
+
+    filtered_data = data_filter.handle(parameter=['language', 'english'])
+    csv_writer.write_csv(keyword=data_filter.get_keyword(), data=filtered_data)
+
+    # Empty results case
     with pytest.raises(IndexError) as exec_info:
-        results = database.filter_data(parameter='cast', value='Borys Szyc')
-        CSVWriter.write_csv(title='results/test_metascore.csv', data=results)
+        updated_data = data_update.handle(parameter=True)
+        csv_writer.write_csv(keyword=data_update.get_keyword(), data=updated_data)
     print(exec_info.value)
-
-    # Single result
-    results = database.filter_data(parameter='language', value='English')
-    CSVWriter.write_csv(title='results/test_english.csv', data=results)
-
-    # Multiple results
-    results = database.sort_data(parameter='imdb_rating')
-    CSVWriter.write_csv(title='results/test_imdbRating.csv', data=results)

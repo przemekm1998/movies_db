@@ -1,6 +1,8 @@
 import argparse
 import csv
 import sqlite3
+from datetime import datetime
+
 import requests
 from abc import ABCMeta, abstractmethod
 from re import sub
@@ -130,12 +132,12 @@ class DataUpdater(CommandHandler):
             api_data = self.download_data(empty_titles)
 
             # Updating database with downloaded data
-            self.update_data(api_data)
+            logs = self.update_data(api_data)
 
             # Changing box office N/A value to null for further conveniance
             self.na_to_null('box_office')
 
-            return str(empty_titles) + " updated!"
+            return logs
 
     def download_data(self, titles):
         """
@@ -163,6 +165,7 @@ class DataUpdater(CommandHandler):
             Converting money to integer
             :return:
             """
+
             try:
                 money_int = Decimal(sub(r'[^\d.]', '', int_to_convert))
             except Exception:
@@ -170,6 +173,9 @@ class DataUpdater(CommandHandler):
                 return str(int_to_convert)
 
             return str(money_int)
+
+        info = dict()  # Keeping record for particular row
+        results = list()  # Keeping the results of all info
 
         for result in downloaded_results:
             # Converting money
@@ -180,16 +186,30 @@ class DataUpdater(CommandHandler):
             votes_str = result['imdbVotes']
             votes_to_insert = convert_integers(votes_str)
 
-            # Inserting data
-            with self.db.conn:
-                self.db.c.execute(self.sql_data_update_statement,
-                                  {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
-                                   'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
-                                   'cast': result['Actors'], 'language': result['Language'],
-                                   'country': result['Country'], 'awards': result['Awards'],
-                                   'imdbRating': result['imdbRating'], 'imdbVotes': votes_to_insert,
-                                   'boxoffice': money_to_insert
-                                   })
+            # Insert data
+            self.insert_data(money_to_insert, votes_to_insert, result)
+
+            # Saving the info
+            info['Title'] = result['Title']
+            info['Status'] = 'Updated'
+            results.append(info)
+
+        return results
+
+    def insert_data(self, money_to_insert, votes_to_insert, result):
+        """
+        Inserting data to the db
+        :return:
+        """
+        with self.db.conn:
+            self.db.c.execute(self.sql_data_update_statement,
+                              {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
+                               'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
+                               'cast': result['Actors'], 'language': result['Language'],
+                               'country': result['Country'], 'awards': result['Awards'],
+                               'imdbRating': result['imdbRating'], 'imdbVotes': votes_to_insert,
+                               'boxoffice': money_to_insert
+                               })
 
     def na_to_null(self, column):
         """
@@ -380,15 +400,26 @@ class DataInsert(CommandHandler):
         :return:
         """
 
+        info = dict()  # Keeping record for particular row
+        results = list()  # Keeping the results of all info
+
         # Inserting every or single title given by user
         if type(parameter) is list:
             for title in parameter:
                 self.insert_title(title)
+
+                info['Title'] = title
+                info['Status'] = 'Inserted'
+                results.append(info)
         else:
             self.insert_title(parameter)
 
+            info['Title'] = parameter
+            info['Status'] = 'Inserted'
+            results.append(info)
+
         # Return the information about inserted data
-        return 'All titles successfully added!'
+        return results
 
     def insert_title(self, title):
         """
@@ -438,12 +469,23 @@ class DataDelete(CommandHandler):
         :return:
         """
 
+        info = dict()  # Keeping record for particular row
+        results = list()  # Keeping the results of all info
+
         # Inserting every or single title given by user
         if type(parameter) is list:
             for title in parameter:
                 self.delete_title(title)
+
+                info['Title'] = title
+                info['Status'] = 'Deleted'
+                results.append(info)
         else:
             self.delete_title(parameter)
+
+            info['Title'] = parameter
+            info['Status'] = 'Deleted'
+            results.append(info)
 
         # Return the information about inserted data
         return 'All titles successfully deleted!'
@@ -521,16 +563,20 @@ class CSVWriter:
     Creating csv file
     """
 
-    @staticmethod
-    def write_csv(title, data):
+    def __init__(self):
+        self.title = 'None'
+
+    def write_csv(self, keyword, data):
         """
         Saving results query as csv file
+        :param keyword:
         :param data:
-        :param title:
         :return:
         """
 
-        with open(title, 'w') as csv_w:
+        self.title = self.create_title(keyword)
+
+        with open(self.title, 'w') as csv_w:
             try:
                 fieldnames = data[0].keys()  # Getting the csv fieldnames
             except IndexError:
@@ -543,6 +589,21 @@ class CSVWriter:
             for result in data:
                 row = dict(result)
                 csv_writer.writerow(row)
+
+    @staticmethod
+    def create_title(keyword):
+        """
+        Creating title for every operation with timestamp
+        :param keyword:
+        :return:
+        """
+
+        date = str(datetime.now().strftime('%Y-%m-%d_%H:%M:%S'))
+        title = date
+
+        title += '_' + keyword + '.csv'
+
+        return title
 
 
 class CLInterface:
@@ -587,6 +648,12 @@ class CLInterface:
         parser.add_argument('--delete', help='deleting records', action='store', nargs='+', type=str,
                             metavar='title')
 
+        # Highscores
+        parser.add_argument('--highscores', help='highscores by every column', action='store_true')
+
+        # Writing csv
+        parser.add_argument('--write_csv', help='saving results as csv file', action='store_true')
+
         args = parser.parse_args()
 
         commands = dict()
@@ -597,7 +664,8 @@ class CLInterface:
         commands['compare'] = args.compare
         commands['insert'] = args.insert
         commands['delete'] = args.delete
-        # print(args.filter_by[0])
+        commands['highscores'] = args.highscores
+        commands['write_csv'] = args.write_csv
 
         return commands
 
@@ -619,7 +687,7 @@ class Main:
 
         # Available handlers of commands
         handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db), DataCompare(db=db), DataInsert(db=db),
-                    DataDelete(db=db)]
+                    DataDelete(db=db), DataHighscores(db=db)]
 
         # Parse commands from args
         commands = CLInterface.get_args()
@@ -667,7 +735,10 @@ class Main:
         :return:
         """
 
-        for key in commands.keys():
+        list_of_commands = commands.keys()
+        write_csv = list_of_commands.pop('write_csv')
+
+        for key in list_of_commands:
             # Handle only not None commands
             if commands[f'{key}']:
                 for handler in handlers:
@@ -675,8 +746,12 @@ class Main:
                         param = commands[key]
                         try:
                             results = handler.handle(parameter=param)
-                            formatted_results = Main.format_results(results)
-                            print(formatted_results)
+
+                            if write_csv:
+                                CSVWriter.write_csv(keyword=key, data=results)
+                            else:
+                                formatted_results = Main.format_results(results)
+                                print(formatted_results)
                         except sqlite3.OperationalError as e:
                             print(str(e))
                         except IndexError:
