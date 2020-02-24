@@ -10,9 +10,7 @@ from decimal import Decimal
 
 
 class DBConfig:
-    """
-    SQL Database management
-    """
+    """ SQL Database management """
 
     def __init__(self, db_name):
 
@@ -54,9 +52,8 @@ class DBConfig:
 
 
 class CommandHandler:
-    """
-    Interface to ensure every handler of specific command uses the method handle and has a keyword
-    """
+    """ Interface to ensure every handler of specific command uses the method handle and has a keyword """
+
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -78,9 +75,7 @@ class CommandHandler:
 
 
 class DataUpdater(CommandHandler):
-    """
-    Handling updating database
-    """
+    """ Handling updating database """
 
     def __init__(self, db):
         self.keyword = 'update'  # Constant keyword to recognize handler
@@ -122,6 +117,8 @@ class DataUpdater(CommandHandler):
         :return:
         """
 
+        results = []
+
         # Update: True or False whether the user wanted the update
         if parameter:
             # Getting titles with empty data
@@ -132,12 +129,12 @@ class DataUpdater(CommandHandler):
             api_data = self.download_data(empty_titles)
 
             # Updating database with downloaded data
-            logs = self.update_data(api_data)
+            results = self.update_data(api_data)
 
             # Changing box office N/A value to null for further conveniance
             self.na_to_null('box_office')
 
-            return logs
+        return results
 
     def download_data(self, titles):
         """
@@ -160,8 +157,8 @@ class DataUpdater(CommandHandler):
         :return:
         """
 
-        info = dict()  # Keeping record for particular row
-        results = list()  # Keeping the results of all info
+        info = {}  # Keeping record for particular row
+        results = []  # Keeping the results of all info
 
         for result in downloaded_results:
             # Insert data
@@ -242,9 +239,7 @@ class DataUpdater(CommandHandler):
 
 
 class DataSorter(CommandHandler):
-    """
-    Handling the filter command request
-    """
+    """ Handling the filter command request """
 
     def __init__(self, db):
         self.keyword = 'sort_by'
@@ -286,9 +281,7 @@ class DataSorter(CommandHandler):
 
 
 class DataFilter(CommandHandler):
-    """
-    Handling the filtering command request
-    """
+    """ Handling the filtering command request """
 
     def __init__(self, db):
         self.keyword = 'filter_by'
@@ -333,9 +326,7 @@ class DataFilter(CommandHandler):
 
 
 class DataCompare(CommandHandler):
-    """
-    Comparing two titles
-    """
+    """ Comparing two titles """
 
     def __init__(self, db):
         self.keyword = 'compare'
@@ -384,9 +375,7 @@ class DataCompare(CommandHandler):
 
 
 class DataInsert(CommandHandler):
-    """
-    Inserting new title
-    """
+    """ Inserting new title """
 
     def __init__(self, db):
         self.keyword = 'insert'
@@ -410,8 +399,8 @@ class DataInsert(CommandHandler):
         :return:
         """
 
-        info = dict()  # Keeping record for particular row
-        results = list()  # Keeping the results of all info
+        info = {}  # Keeping record for particular row
+        results = []  # Keeping the results of all info
 
         # Inserting every or single title given by user
         if type(parameter) is list:
@@ -453,9 +442,7 @@ class DataInsert(CommandHandler):
 
 
 class DataDelete(CommandHandler):
-    """
-    Deleting title or titles
-    """
+    """ Deleting title or titles """
 
     def __init__(self, db):
         self.keyword = 'delete'
@@ -479,8 +466,8 @@ class DataDelete(CommandHandler):
         :return:
         """
 
-        info = dict()  # Keeping record for particular row
-        results = list()  # Keeping the results of all info
+        info = {}  # Keeping record for particular row
+        results = []  # Keeping the results of all info
 
         # Inserting every or single title given by user
         if type(parameter) is list:
@@ -522,9 +509,7 @@ class DataDelete(CommandHandler):
 
 
 class DataHighscores(CommandHandler):
-    """
-    Showing highscores
-    """
+    """ Showing highscores """
 
     def __init__(self, db):
         self.keyword = 'highscores'
@@ -553,25 +538,26 @@ class DataHighscores(CommandHandler):
         :return:
         """
 
+        results = []
+
         if parameter:
             # For every column execute the sql statement and add results to the list of results
-            results = []
+
             for column in self.columns:
                 self.col_name = column
                 result = self.db.execute_statement(self.sql_statement)
                 results.append(result[0])
 
             # Return the information about inserted data
-            return results
+
+        return results
 
     def get_keyword(self):
         return self.keyword
 
 
 class CSVWriter:
-    """
-    Creating csv file
-    """
+    """ Creating csv file """
 
     def __init__(self):
         self.title = 'None'
@@ -618,9 +604,7 @@ class CSVWriter:
 
 
 class CLInterface:
-    """
-    Command Line Interface
-    """
+    """ Command Line Interface """
 
     @staticmethod
     def get_args():
@@ -686,9 +670,7 @@ class CLInterface:
 
 
 class Main:
-    """
-    Main program class
-    """
+    """ Main program class """
 
     @staticmethod
     def main():
@@ -768,7 +750,8 @@ class Main:
 
                             if write_csv:
                                 # User wants to print to csv
-                                CSVWriter.write_csv(keyword=key, data=results)
+                                csv_writer = CSVWriter()
+                                csv_writer.write_csv(keyword=key, data=results)
                             else:
                                 # Standard print to console
                                 formatted_results = Main.format_results(results)
