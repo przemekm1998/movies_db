@@ -47,12 +47,14 @@ class DBConfig:
         :param table:
         :return:
         """
-        return lambda column, value_to_change, new_value: f"""UPDATE {table} SET {column} = {new_value} 
+        return lambda column, value_to_change,
+                      new_value: f"""UPDATE {table} SET {column} = {new_value} 
                             WHERE {column} = {value_to_change};"""
 
 
 class CommandHandler:
-    """ Interface to ensure every handler of specific command uses the method handle and has a keyword """
+    """ Interface to ensure every handler of specific command uses
+    the method handle and has a keyword """
 
     __metaclass__ = ABCMeta
 
@@ -90,8 +92,9 @@ class DataUpdater(CommandHandler):
         Statement to execute - if director column is null than everything must be null
         :return:
         """
-        sql_statement = f"""SELECT {self.db.movies_table}.title FROM {self.db.movies_table} 
-                        WHERE director IS NULL"""
+        sql_statement = f"""SELECT {self.db.movies_table}.title 
+                            FROM {self.db.movies_table} 
+                            WHERE director IS NULL"""
         return sql_statement
 
     @property
@@ -102,12 +105,12 @@ class DataUpdater(CommandHandler):
         """
         sql_statement = f"""UPDATE {self.db.movies_table} 
                             SET year = :year, runtime = :runtime,
-                                   genre = :genre, director = :director, writer = :writer,
-                                   cast = :cast, language = :language,
-                                   country = :country,
-                                   awards = :awards, imdb_Rating = :imdbRating,
-                                   imdb_Votes = :imdbVotes,
-                                   box_office = :boxoffice
+                            genre = :genre, director = :director, writer = :writer,
+                            cast = :cast, language = :language,
+                            country = :country,
+                            awards = :awards, imdb_Rating = :imdbRating,
+                            imdb_Votes = :imdbVotes,
+                            box_office = :boxoffice
                             WHERE title = :title"""
         return sql_statement
 
@@ -122,8 +125,11 @@ class DataUpdater(CommandHandler):
         # Update: True or False whether the user wanted the update
         if parameter:
             # Getting titles with empty data
-            empty_titles = self.db.execute_statement(sql_statement=self.sql_empty_titles_statement)
-            empty_titles = [title['Title'] for title in empty_titles]  # Convrting SQL Row Objects to str
+            empty_titles = self.db.execute_statement(
+                sql_statement=self.sql_empty_titles_statement)
+
+            # Convrting SQL Row Objects to str
+            empty_titles = [title['Title'] for title in empty_titles]
 
             # Downloading data for empty titles using API
             api_data = self.download_data(empty_titles)
@@ -144,8 +150,10 @@ class DataUpdater(CommandHandler):
         """
 
         for title in titles:
-            payload = {'t': title, 'r': 'json'}  # Get full data based on title in json format
-            respond = requests.get(f'http://www.omdbapi.com/?apikey={self.api_key}', params=payload).json()
+            payload = {'t': title,
+                       'r': 'json'}  # Get full data based on title in json format
+            respond = requests.get(f'http://www.omdbapi.com/?apikey={self.api_key}',
+                                   params=payload).json()
             self.results.append(respond)
 
         return self.results
@@ -193,11 +201,17 @@ class DataUpdater(CommandHandler):
 
             with self.db.conn:
                 self.db.c.execute(self.sql_data_update_statement,
-                                  {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
-                                   'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
-                                   'cast': result['Actors'], 'language': result['Language'],
-                                   'country': result['Country'], 'awards': result['Awards'],
-                                   'imdbRating': result['imdbRating'], 'imdbVotes': votes_to_insert,
+                                  {'title': result['Title'], 'year': result['Year'],
+                                   'runtime': result['Runtime'],
+                                   'genre': result['Genre'],
+                                   'director': result['Director'],
+                                   'writer': result['Writer'],
+                                   'cast': result['Actors'],
+                                   'language': result['Language'],
+                                   'country': result['Country'],
+                                   'awards': result['Awards'],
+                                   'imdbRating': result['imdbRating'],
+                                   'imdbVotes': votes_to_insert,
                                    'boxoffice': money_to_insert
                                    })
         except KeyError:
@@ -253,9 +267,10 @@ class DataSorter(CommandHandler):
         Statement to execute - sorting
         :return:
         """
-        sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.parameter}
-                        FROM {self.db.movies_table}
-                        ORDER BY {self.parameter} DESC"""
+        sql_statement = f"""SELECT {self.db.movies_table}.title, 
+                            {self.db.movies_table}.{self.parameter}
+                            FROM {self.db.movies_table}
+                            ORDER BY {self.parameter} DESC"""
         return sql_statement
 
     def handle(self, parameter):
@@ -316,9 +331,11 @@ class DataFilter(CommandHandler):
         Statement to execute - filtering
         :return:
         """
-        sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
+        sql_statement = f"""SELECT {self.db.movies_table}.title, 
+                            {self.db.movies_table}.{self.column}
                             FROM {self.db.movies_table}
-                            WHERE {self.db.movies_table}.{self.column} LIKE '%{self.value}%';"""
+                            WHERE {self.db.movies_table}.{self.column} 
+                            LIKE '%{self.value}%';"""
         return sql_statement
 
     def get_keyword(self):
@@ -363,9 +380,11 @@ class DataCompare(CommandHandler):
         Statement to execute - comparing
         :return:
         """
-        sql_statement = f"""SELECT {self.db.movies_table}.title, {self.db.movies_table}.{self.column}
+        sql_statement = f"""SELECT {self.db.movies_table}.title, 
+                            {self.db.movies_table}.{self.column}
                             FROM {self.db.movies_table}
-                            WHERE {self.db.movies_table}.title IN ('{self.movie_1}', '{self.movie_2}')
+                            WHERE {self.db.movies_table}.title IN ('{self.movie_1}', 
+                            '{self.movie_2}')
                             ORDER BY {self.db.movies_table}.{self.column} desc
                             LIMIT 1"""
         return sql_statement
@@ -524,7 +543,8 @@ class DataHighscores(CommandHandler):
         Statement to execute - get highscore with column name
         :return:
         """
-        sql_statement = f"""SELECT name as col_name, MAX({self.db.movies_table}.{self.col_name}) as max_val, 
+        sql_statement = f"""SELECT name as col_name, 
+                            MAX({self.db.movies_table}.{self.col_name}) as max_val, 
                             {self.db.movies_table}.title
                             FROM PRAGMA_TABLE_INFO('{self.db.movies_table}')
                             JOIN {self.db.movies_table}
@@ -541,14 +561,11 @@ class DataHighscores(CommandHandler):
         results = []
 
         if parameter:
-            # For every column execute the sql statement and add results to the list of results
 
             for column in self.columns:
                 self.col_name = column
                 result = self.db.execute_statement(self.sql_statement)
                 results.append(result[0])
-
-            # Return the information about inserted data
 
         return results
 
@@ -614,7 +631,8 @@ class CLInterface:
         """
 
         # Creating parser
-        parser = argparse.ArgumentParser(prog='my_program', description='Working with movies DB.')
+        parser = argparse.ArgumentParser(prog='my_program',
+                                         description='Working with movies DB.')
         parser.add_argument('--version', action='version', version='1.0.0')
 
         # Updating records
@@ -623,34 +641,43 @@ class CLInterface:
         # Sorting records
         parser.add_argument('--sort_by', help='sort records', action='store', nargs=1,
                             choices=['id', 'title', 'year', 'runtime', 'genre',
-                                     'director', 'cast', 'writer', 'language', 'country',
-                                     'awards', 'imdb_rating', 'imdb_votes', 'box_office'],
+                                     'director', 'cast', 'writer', 'language',
+                                     'country',
+                                     'awards', 'imdb_rating', 'imdb_votes',
+                                     'box_office'],
                             type=str)
 
         # Filtering records
-        parser.add_argument('--filter_by', help='filter records', action='store', nargs=2, type=str,
+        parser.add_argument('--filter_by', help='filter records', action='store',
+                            nargs=2, type=str,
                             metavar=('column', 'value'))
 
         # Comparing records
-        parser.add_argument('--compare', help='comparing records', action='store', nargs=3, type=str,
+        parser.add_argument('--compare', help='comparing records', action='store',
+                            nargs=3, type=str,
                             metavar=('column', 'movie1', 'movie2'))
 
         # Inserting titles
-        parser.add_argument('--insert', help='inserting records', action='store', nargs='+', type=str,
+        parser.add_argument('--insert', help='inserting records', action='store',
+                            nargs='+', type=str,
                             metavar='title')
 
         # Deleting titles
-        parser.add_argument('--delete', help='deleting records', action='store', nargs='+', type=str,
+        parser.add_argument('--delete', help='deleting records', action='store',
+                            nargs='+', type=str,
                             metavar='title')
 
         # Highscores
-        parser.add_argument('--highscores', help='highscores by every column', action='store_true')
+        parser.add_argument('--highscores', help='highscores by every column',
+                            action='store_true')
 
         # Writing csv
-        parser.add_argument('--write_csv', help='saving results as csv file', action='store_true')
+        parser.add_argument('--write_csv', help='saving results as csv file',
+                            action='store_true')
 
         # Writing csv
-        parser.add_argument('--db_name', help='select the db', action='store', default='movies.sqlite')
+        parser.add_argument('--db_name', help='select the db', action='store',
+                            default='movies.sqlite')
 
         args = parser.parse_args()
 
@@ -687,7 +714,8 @@ class Main:
         db = DBConfig(db_name=db_name)
 
         # Available handlers of commands
-        handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db), DataCompare(db=db), DataInsert(db=db),
+        handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db),
+                    DataCompare(db=db), DataInsert(db=db),
                     DataDelete(db=db), DataHighscores(db=db)]
 
         # Performing commands
@@ -761,7 +789,8 @@ class Main:
                             print(str(e))
 
                         except IndexError:
-                            print(handler.get_keyword() + ' error: No results found for ' + str(param))
+                            print(handler.get_keyword() +
+                                  ' error: No results found for ' + str(param))
 
                         except ValueError as e:
                             print(str(e))
