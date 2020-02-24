@@ -35,6 +35,7 @@ def database():
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('In Bruges')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Gods')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Godfather')""")
+            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Niemategonapewno')""")
         except sqlite3.IntegrityError:
             pass
 
@@ -121,3 +122,4 @@ def test_download_data(downloaded_data):
         correct_json = json.load(correct_file)
 
     assert correct_json == downloaded_data[0]
+    print(downloaded_data[5].keys())

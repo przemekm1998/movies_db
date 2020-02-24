@@ -33,25 +33,36 @@ def titles():
     yield titles
 
 
-def test_download_data(data_downloader, titles):
+@pytest.fixture(scope='module')
+def fail_titles():
+    """ Titles to download data """
+
+    titles = ['Niema1', 'Niema2']
+    yield titles
+
+
+def test_download_data(data_downloader, titles, fail_titles):
     """
     Testing downloading json data
     """
 
     # Checking if data for all movies is downloaded
-    results = data_downloader.download_data(titles)
+    # results = data_downloader.download_data(titles)
+    #
+    # assert results is not None
+    # assert len(results) == 5
+    #
+    # assert results[0]['Title'] == 'The Shawshank Redemption'
+    # assert results[1]['Title'] == 'Memento'
+    # assert results[2]['Title'] == 'In Bruges'
+    # assert results[3]['Title'] == 'Gods'
+    # assert results[4]['Title'] == 'The Godfather'
+    #
+    # # Checking json data corectness
+    # with open('resources/json_movies.json', 'r') as correct_file:
+    #     correct_json = json.load(correct_file)
+    #
+    # assert correct_json == results[0]
 
-    assert results is not None
-    assert len(results) == 5
-
-    assert results[0]['Title'] == 'The Shawshank Redemption'
-    assert results[1]['Title'] == 'Memento'
-    assert results[2]['Title'] == 'In Bruges'
-    assert results[3]['Title'] == 'Gods'
-    assert results[4]['Title'] == 'The Godfather'
-
-    # Checking json data corectness
-    with open('resources/json_movies.json', 'r') as correct_file:
-        correct_json = json.load(correct_file)
-
-    assert correct_json == results[0]
+    # Fails
+    results = data_downloader.download_data(fail_titles)

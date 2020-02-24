@@ -160,56 +160,51 @@ class DataUpdater(CommandHandler):
         :return:
         """
 
-        def convert_integers(int_to_convert):
-            """
-            Converting money to integer
-            :return:
-            """
-
-            try:
-                money_int = Decimal(sub(r'[^\d.]', '', int_to_convert))
-            except Exception:
-                # Tried to handle particular exception but can't catch it
-                return str(int_to_convert)
-
-            return str(money_int)
-
         info = dict()  # Keeping record for particular row
         results = list()  # Keeping the results of all info
 
         for result in downloaded_results:
-            # Converting money
-            money_str = result['BoxOffice']
-            money_to_insert = convert_integers(money_str)
-
-            # Converting votes
-            votes_str = result['imdbVotes']
-            votes_to_insert = convert_integers(votes_str)
-
             # Insert data
-            self.insert_data(money_to_insert, votes_to_insert, result)
+            try:
+                self.insert_data(result)
+                info['Title'] = result['Title']
+                info['Status'] = 'Updated'
+            except KeyError:
+                info['Title'] = result['Title']
+                info['Status'] = 'Not Found'
 
             # Saving the info
-            info['Title'] = result['Title']
-            info['Status'] = 'Updated'
+
             results.append(info)
 
         return results
 
-    def insert_data(self, money_to_insert, votes_to_insert, result):
+    def insert_data(self, result):
         """
         Inserting data to the db
         :return:
         """
-        with self.db.conn:
-            self.db.c.execute(self.sql_data_update_statement,
-                              {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
-                               'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
-                               'cast': result['Actors'], 'language': result['Language'],
-                               'country': result['Country'], 'awards': result['Awards'],
-                               'imdbRating': result['imdbRating'], 'imdbVotes': votes_to_insert,
-                               'boxoffice': money_to_insert
-                               })
+
+        try:
+            # Converting money
+            money_str = result['BoxOffice']
+            money_to_insert = self.convert_integers(money_str)
+
+            # Converting votes
+            votes_str = result['imdbVotes']
+            votes_to_insert = self.convert_integers(votes_str)
+
+            with self.db.conn:
+                self.db.c.execute(self.sql_data_update_statement,
+                                  {'title': result['Title'], 'year': result['Year'], 'runtime': result['Runtime'],
+                                   'genre': result['Genre'], 'director': result['Director'], 'writer': result['Writer'],
+                                   'cast': result['Actors'], 'language': result['Language'],
+                                   'country': result['Country'], 'awards': result['Awards'],
+                                   'imdbRating': result['imdbRating'], 'imdbVotes': votes_to_insert,
+                                   'boxoffice': money_to_insert
+                                   })
+        except KeyError:
+            raise
 
     def na_to_null(self, column):
         """
@@ -225,7 +220,22 @@ class DataUpdater(CommandHandler):
             try:
                 self.db.c.execute(sql_statement)
             except sqlite3.OperationalError:
-                raise  # Not existing column
+                print("Column doesn't exist")
+
+    @staticmethod
+    def convert_integers(int_to_convert):
+        """
+        Converting money to integer
+        :return:
+        """
+
+        try:
+            money_int = Decimal(sub(r'[^\d.]', '', int_to_convert))
+        except Exception:
+            # Tried to handle particular exception but can't catch it
+            return str(int_to_convert)
+
+        return str(money_int)
 
     def get_keyword(self):
         return self.keyword
@@ -574,13 +584,14 @@ class CSVWriter:
         :return:
         """
 
+        try:
+            fieldnames = data[0].keys()  # Getting the csv fieldnames
+        except IndexError:
+            raise
+
         self.title = self.create_title(keyword)
 
         with open(self.title, 'w') as csv_w:
-            try:
-                fieldnames = data[0].keys()  # Getting the csv fieldnames
-            except IndexError:
-                raise
 
             csv_writer = csv.DictWriter(csv_w, fieldnames=fieldnames, delimiter=',')
             csv_writer.writeheader()
@@ -654,6 +665,9 @@ class CLInterface:
         # Writing csv
         parser.add_argument('--write_csv', help='saving results as csv file', action='store_true')
 
+        # Writing csv
+        parser.add_argument('--db_name', help='select the db', action='store', default='movies.sqlite')
+
         args = parser.parse_args()
 
         commands = dict()
@@ -666,6 +680,7 @@ class CLInterface:
         commands['delete'] = args.delete
         commands['highscores'] = args.highscores
         commands['write_csv'] = args.write_csv
+        commands['db_name'] = args.db_name
 
         return commands
 
@@ -682,15 +697,16 @@ class Main:
         :return:
         """
 
+        # Parse commands from args
+        commands = CLInterface.get_args()
+
         # Initialization of DB connection
-        db = DBConfig(db_name='movies.sqlite')
+        db_name = commands['db_name']
+        db = DBConfig(db_name=db_name)
 
         # Available handlers of commands
         handlers = [DataUpdater(db=db), DataSorter(db=db), DataFilter(db=db), DataCompare(db=db), DataInsert(db=db),
                     DataDelete(db=db), DataHighscores(db=db)]
-
-        # Parse commands from args
-        commands = CLInterface.get_args()
 
         # Performing commands
         Main.handle_commands(commands=commands, handlers=handlers)
@@ -739,23 +755,31 @@ class Main:
         write_csv = list_of_commands.pop('write_csv')
 
         for key in list_of_commands:
+
             # Handle only not None commands
             if commands[f'{key}']:
                 for handler in handlers:
+
                     if key == handler.get_keyword():
                         param = commands[key]
+
                         try:
                             results = handler.handle(parameter=param)
 
                             if write_csv:
+                                # User wants to print to csv
                                 CSVWriter.write_csv(keyword=key, data=results)
                             else:
+                                # Standard print to console
                                 formatted_results = Main.format_results(results)
                                 print(formatted_results)
+
                         except sqlite3.OperationalError as e:
                             print(str(e))
+
                         except IndexError:
                             print(handler.get_keyword() + ' error: No results found for ' + str(param))
+
                         except ValueError as e:
                             print(str(e))
                         break
