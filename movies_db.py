@@ -47,8 +47,8 @@ class DBConfig:
         :param table:
         :return:
         """
-        return lambda column, value_to_change,
-                      new_value: f"""UPDATE {table} SET {column} = {new_value} 
+        return lambda column, value_to_change, new_value: f"""
+                            UPDATE {table} SET {column} = {new_value} 
                             WHERE {column} = {value_to_change};"""
 
 
