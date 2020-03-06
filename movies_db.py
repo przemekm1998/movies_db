@@ -302,6 +302,8 @@ class DataFilter(CommandHandler):
     """ Handling the filtering command request """
 
     def __init__(self, db):
+        super().__init__()
+
         self.keyword = 'filter_by'
         self.db = db
 
@@ -321,12 +323,12 @@ class DataFilter(CommandHandler):
 
         # Getting the results from the db
         try:
-            results = self.db.execute_statement(self.sql_statement)
+            self.results = self.db.execute_statement(self.sql_statement)
         except sqlite3.OperationalError as e:
             raise e
 
         # Return the results
-        return results
+        return self.results
 
     @property
     def sql_statement(self):
