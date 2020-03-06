@@ -57,7 +57,6 @@ class CommandHandler:
     the method handle and has a keyword """
 
     def __init__(self):
-        self.info = dict()  # Keeping record for particular row
         self.results = []  # Keeping the results of all info
 
     __metaclass__ = ABCMeta
@@ -171,18 +170,15 @@ class DataUpdater(CommandHandler):
         """
 
         for result in downloaded_results:
+
             # Insert data
             try:
                 self.insert_data(result)
-                self.info['Title'] = result['Title']
-                self.info['Status'] = 'Updated'
+                info = {'Title': result['Title'], 'Status': 'Updated'}
             except KeyError:
-                self.info['Title'] = result['Title']
-                self.info['Status'] = 'Not Found'
+                info = {'Title': result['Title'], 'Status': 'Not Found'}
 
-            # Saving the info
-
-            self.results.append(self.info)
+            self.results.append(info)
 
         return self.results
 
@@ -404,6 +400,8 @@ class DataInsert(CommandHandler):
     """ Inserting new title """
 
     def __init__(self, db):
+        super().__init__()
+
         self.keyword = 'insert'
         self.db = db
         self.title_to_write = None
@@ -425,25 +423,20 @@ class DataInsert(CommandHandler):
         :return:
         """
 
-        info = dict()  # Keeping record for particular row
-        results = []  # Keeping the results of all info
-
         # Inserting every or single title given by user
         if type(parameter) is list:
             for title in parameter:
                 self.insert_title(title)
 
-                info['Title'] = title
-                info['Status'] = 'Inserted'
-                results.append(info)
+                info = {'Title': title, 'Status': 'Inserted'}
+                self.results.append(info)
         else:
             self.insert_title(parameter)
 
-            info['Title'] = parameter
-            info['Status'] = 'Inserted'
-            results.append(info)
+            info = {'Title': parameter, 'Status': 'Inserted'}
+            self.results.append(info)
 
-        return results
+        return self.results
 
     def insert_title(self, title):
         """
@@ -455,7 +448,6 @@ class DataInsert(CommandHandler):
 
         try:
             self.db.c.execute(self.sql_statement)
-            print(str(title) + " added to the db!")
         except sqlite3.OperationalError as e:
             raise e
         except sqlite3.IntegrityError as e:
