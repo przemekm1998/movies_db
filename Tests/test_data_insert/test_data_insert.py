@@ -80,7 +80,9 @@ def test_handle(data_insert, titles_to_add, database):
 
     # Testing corectness of the output
     result = data_insert.handle(parameter=titles_to_add)
-    assert result == 'All titles successfully added!'
+    assert result == [{'Title': 'Memento', 'Status': 'Inserted'},
+                      {'Title': 'In Bruges', 'Status': 'Inserted'},
+                      {'Title': 5649, 'Status': 'Inserted'}]
 
     # Testing if titles are added to the db
     sql_statement = f"SELECT * FROM {database.movies_table}"
@@ -93,5 +95,4 @@ def test_handle(data_insert, titles_to_add, database):
     # Fail case - inserting duplicate
     with pytest.raises(sqlite3.IntegrityError) as exec_info:
         result = data_insert.handle(parameter='Memento')
-    print(exec_info.value)
-
+    print(exec_info)
