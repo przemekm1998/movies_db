@@ -29,7 +29,8 @@ def database():
                     """)
 
         try:
-            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
+            db.c.execute(
+                """INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Memento')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('In Bruges')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Gods')""")
@@ -86,7 +87,8 @@ def test_handle(data_delete, titles_to_delete, database):
 
     # Testing corectness of the output
     result = data_delete.handle(parameter=titles_to_delete)
-    assert result == 'All titles successfully deleted!'
+    assert result == [{'Status': 'Deleted', 'Title': 'Memento'},
+                      {'Status': 'Deleted', 'Title': 'In Bruges'}]
 
     # Testing if titles are deleted from the db
     sql_statement = f"SELECT * FROM {database.movies_table}"

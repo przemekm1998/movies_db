@@ -458,9 +458,11 @@ class DataInsert(CommandHandler):
 
 
 class DataDelete(CommandHandler):
-    """ Deleting title or titles """
+    """ Deleting titles """
 
     def __init__(self, db):
+        super().__init__()
+
         self.keyword = 'delete'
         self.db = db
         self.title_to_delete = None
@@ -468,7 +470,7 @@ class DataDelete(CommandHandler):
     @property
     def sql_statement(self):
         """
-        Statement to execute - inserting
+        Statement to execute - deleting
         :return:
         """
         sql_statement = f"""DELETE FROM {self.db.movies_table}
@@ -482,26 +484,20 @@ class DataDelete(CommandHandler):
         :return:
         """
 
-        info = dict()  # Keeping record for particular row
-        results = []  # Keeping the results of all info
-
-        # Inserting every or single title given by user
+        # Inserting every title given by user
         if type(parameter) is list:
             for title in parameter:
                 self.delete_title(title)
 
-                info['Title'] = title
-                info['Status'] = 'Deleted'
-                results.append(info)
+                info = {'Title': title, 'Status': 'Deleted'}
+                self.results.append(info)
         else:
             self.delete_title(parameter)
 
-            info['Title'] = parameter
-            info['Status'] = 'Deleted'
-            results.append(info)
+            info = {'Title': parameter, 'Status': 'Deleted'}
+            self.results.append(info)
 
-        # Return the information about inserted data
-        return 'All titles successfully deleted!'
+        return self.results
 
     def delete_title(self, title):
         """
@@ -517,8 +513,6 @@ class DataDelete(CommandHandler):
             raise e
         except sqlite3.IntegrityError as e:
             raise e
-
-        print(str(title) + " deleted from the database!")
 
     def get_keyword(self):
         return self.keyword
