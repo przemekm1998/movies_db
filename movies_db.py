@@ -522,10 +522,11 @@ class DataHighscores(CommandHandler):
     """ Showing highscores """
 
     def __init__(self, db):
+        super().__init__()
         self.keyword = 'highscores'
         self.db = db
 
-        self.columns = ['RUNTIME', 'IMDb_Rating', 'BOX_OFFICE', 'IMDb_votes']
+        self.columns = ('RUNTIME', 'IMDb_Rating', 'BOX_OFFICE', 'IMDb_votes')
         self.col_name = None
 
     @property
@@ -549,16 +550,14 @@ class DataHighscores(CommandHandler):
         :return:
         """
 
-        results = []
-
         if parameter:
 
             for column in self.columns:
                 self.col_name = column
                 result = self.db.execute_statement(self.sql_statement)
-                results.append(result[0])
+                self.results.append(result[0])
 
-        return results
+        return self.results
 
     def get_keyword(self):
         return self.keyword
