@@ -30,7 +30,8 @@ def database():
                     """)
 
         try:
-            db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
+            db.c.execute(
+                """INSERT INTO MOVIES(TITLE) VALUES ('The Shawshank Redemption')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Memento')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('In Bruges')""")
             db.c.execute("""INSERT INTO MOVIES(TITLE) VALUES ('Gods')""")
@@ -120,6 +121,4 @@ def test_download_data(downloaded_data):
     # Checking json data corectness
     with open('resources/json_movies.json', 'r') as correct_file:
         correct_json = json.load(correct_file)
-
-    assert correct_json == downloaded_data[0]
-    print(downloaded_data[5].keys())
+        assert correct_json == downloaded_data[0]

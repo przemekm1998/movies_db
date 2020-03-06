@@ -258,8 +258,11 @@ class DataSorter(CommandHandler):
     """ Handling the filter command request """
 
     def __init__(self, db):
+        super().__init__()
+
         self.keyword = 'sort_by'
         self.db = db  # DB to update
+
         self.parameter = None
         self.value = None
 
@@ -281,17 +284,15 @@ class DataSorter(CommandHandler):
         :return:
         """
 
-        # Setting the parameter
         self.parameter = parameter
 
         # Get the results from db
         try:
-            results = self.db.execute_statement(self.sql_statement)
+            self.results = self.db.execute_statement(self.sql_statement)
         except sqlite3.OperationalError as e:
             raise e
 
-        # Return of the results
-        return results
+        return self.results
 
     def get_keyword(self):
         return self.keyword
@@ -451,10 +452,10 @@ class DataInsert(CommandHandler):
         try:
             self.db.c.execute(self.sql_statement)
             print(str(title) + " added to the db!")
-        except sqlite3.OperationalError:
-            raise
-        except sqlite3.IntegrityError:
-            raise
+        except sqlite3.OperationalError as e:
+            raise e
+        except sqlite3.IntegrityError as e:
+            raise e
 
     def get_keyword(self):
         return self.keyword
@@ -516,10 +517,10 @@ class DataDelete(CommandHandler):
 
         try:
             self.db.c.execute(self.sql_statement)
-        except sqlite3.OperationalError:
-            raise
-        except sqlite3.IntegrityError:
-            raise
+        except sqlite3.OperationalError as e:
+            raise e
+        except sqlite3.IntegrityError as e:
+            raise e
 
         print(str(title) + " deleted from the database!")
 
@@ -589,8 +590,8 @@ class CSVWriter:
 
         try:
             fieldnames = data[0].keys()  # Getting the csv fieldnames
-        except IndexError:
-            raise
+        except IndexError as e:
+            raise e
 
         self.title = self.create_title(keyword)
 
@@ -731,9 +732,9 @@ class Main:
 
         try:
             keys = results[0].keys()
-        except IndexError:
+        except IndexError as e:
             # Empty results case
-            raise
+            raise e
         except AttributeError:
             # Ready to print string
             return results
