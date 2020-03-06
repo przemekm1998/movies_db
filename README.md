@@ -26,7 +26,7 @@ The task consisted of writing a script that fills example data source(SQLite DB)
 
   `python movies.py --add "Kac Wawa"`
 
-* Sowing current highscores
+* Current highscores
 
   `python movies.py --highscores`
 
