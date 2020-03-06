@@ -61,8 +61,8 @@ def commands_working():
 def handlers(database):
     """ Fixture of handlers to test """
 
-    handlers = [DataUpdater(database), DataSorter(database), DataFilter(database), DataCompare(database),
-                DataInsert(database), DataDelete(database)]
+    handlers = [DataUpdater(database), DataSorter(database), DataFilter(database),
+                DataCompare(database), DataInsert(database), DataDelete(database)]
 
     yield handlers
 

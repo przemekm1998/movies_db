@@ -56,6 +56,10 @@ class CommandHandler:
     """ Interface to ensure every handler of specific command uses
     the method handle and has a keyword """
 
+    def __init__(self):
+        self.info = dict()  # Keeping record for particular row
+        self.results = []  # Keeping the results of all info
+
     __metaclass__ = ABCMeta
 
     @abstractmethod
@@ -80,10 +84,11 @@ class DataUpdater(CommandHandler):
     """ Handling updating database """
 
     def __init__(self, db):
+        super().__init__()
+
         self.keyword = 'update'  # Constant keyword to recognize handler
         self.db = db  # DB to update
 
-        self.results = []  # List for downloaded json results
         self.api_key = '305043ae'  # static API key to use API
 
     @property
@@ -122,7 +127,7 @@ class DataUpdater(CommandHandler):
 
         results = []
 
-        # Update: True or False whether the user wanted the update
+        # If user wanted the update
         if parameter:
             # Getting titles with empty data
             empty_titles = self.db.execute_statement(
@@ -165,24 +170,21 @@ class DataUpdater(CommandHandler):
         :return:
         """
 
-        info = {}  # Keeping record for particular row
-        results = []  # Keeping the results of all info
-
         for result in downloaded_results:
             # Insert data
             try:
                 self.insert_data(result)
-                info['Title'] = result['Title']
-                info['Status'] = 'Updated'
+                self.info['Title'] = result['Title']
+                self.info['Status'] = 'Updated'
             except KeyError:
-                info['Title'] = result['Title']
-                info['Status'] = 'Not Found'
+                self.info['Title'] = result['Title']
+                self.info['Status'] = 'Not Found'
 
             # Saving the info
 
-            results.append(info)
+            self.results.append(self.info)
 
-        return results
+        return self.results
 
     def insert_data(self, result):
         """
@@ -418,7 +420,7 @@ class DataInsert(CommandHandler):
         :return:
         """
 
-        info = {}  # Keeping record for particular row
+        info = dict()  # Keeping record for particular row
         results = []  # Keeping the results of all info
 
         # Inserting every or single title given by user
@@ -436,7 +438,6 @@ class DataInsert(CommandHandler):
             info['Status'] = 'Inserted'
             results.append(info)
 
-        # Return the information about inserted data
         return results
 
     def insert_title(self, title):
@@ -449,12 +450,11 @@ class DataInsert(CommandHandler):
 
         try:
             self.db.c.execute(self.sql_statement)
+            print(str(title) + " added to the db!")
         except sqlite3.OperationalError:
             raise
         except sqlite3.IntegrityError:
             raise
-
-        print(str(title) + " added to the db!")
 
     def get_keyword(self):
         return self.keyword
@@ -485,7 +485,7 @@ class DataDelete(CommandHandler):
         :return:
         """
 
-        info = {}  # Keeping record for particular row
+        info = dict()  # Keeping record for particular row
         results = []  # Keeping the results of all info
 
         # Inserting every or single title given by user
@@ -730,7 +730,7 @@ class Main:
         """
 
         try:
-            keys = results[0].keys()  # Loading keys
+            keys = results[0].keys()
         except IndexError:
             # Empty results case
             raise
@@ -739,6 +739,7 @@ class Main:
             return results
 
         formatted_results = '\n'  # Newline for styling
+
         for key in keys:
             formatted_results += ('{:30}'.format(str(key)) + " | ")
 
@@ -799,116 +800,3 @@ class Main:
 
 if __name__ == '__main__':
     Main.main()
-
-# THINGS TO BE REUSED IN THE FUTURE
-
-# class FileParser:
-#     """
-#     Reading the list of titles from txt file
-#     """
-#
-#     def __init__(self, titles_to_get):
-#         self.titles_to_get = titles_to_get
-#         self.titles = []
-#
-#     def read_titles(self):
-#         """
-#         Reading titles from a txt file
-#         """
-#
-#         try:
-#             # Read from file
-#             with open(self.titles_to_get, 'r') as read_file:
-#                 for line in read_file:
-#                     line = line.rstrip('\n')
-#                     self.titles.append(line)
-#         except FileNotFoundError as e:
-#             raise e
-
-# def filter_data(self, parameter, value):
-#     """
-#     Returning data based on inserted title
-#     :return:
-#     """
-#
-#     # Statement to run
-#     sql_statement = f"""SELECT {self.movies_table}.title, {self.movies_table}.{parameter}
-#                         FROM {self.movies_table}
-#                         WHERE {self.movies_table}.{parameter} LIKE '%{value}%';"""
-#
-#     # Statement execution
-#     try:
-#         self.c.execute(sql_statement)
-#         result = self.c.fetchall()
-#     except sqlite3.OperationalError:
-#         # Not existing column
-#         raise
-#
-#     return result
-#
-# def compare(self, parameter, titles_to_compare):
-#     """
-#     Comparing two titles
-#     :param parameter:
-#     :param titles_to_compare:
-#     :return:
-#     """
-#
-#     title_1 = titles_to_compare[0]
-#     title_2 = titles_to_compare[1]
-#
-#     sql_statement = f"""SELECT {self.movies_table}.title, {self.movies_table}.{parameter}
-#                         FROM {self.movies_table}
-#                         WHERE {self.movies_table}.title IN ('{title_1}', '{title_2}')
-#                         ORDER BY {self.movies_table}.{parameter} desc
-#                         LIMIT 1"""
-#
-#     # Statement execution
-#     try:
-#         self.c.execute(sql_statement)
-#         result = self.c.fetchall()
-#     except sqlite3.OperationalError:
-#         # Not existing column
-#         raise
-#
-#     return result
-
-# def db_create(self):
-#     """
-#     Create tables if don't exist
-#     """
-#
-#     try:
-#         # Try to create table
-#         with self.conn:
-#             self.c.execute(f"""
-#                 CREATE TABLE {self.movies_table} (
-#                 title TEXT,
-#                 year INTEGER,
-#                 rated TEXT,
-#                 released TEXT,
-#                 runtime TEXT,
-#                 genre TEXT,
-#                 director TEXT,
-#                 writer TEXT,
-#                 actors TEXT,
-#                 plot TEXT,
-#                 language TEXT,
-#                 country TEXT,
-#                 awards TEXT,
-#                 poster TEXT,
-#                 metascore INTEGER,
-#                 imdbRating REAL,
-#                 imdbVotes INTEGER,
-#                 imdbID INTEGER,
-#                 type TEXT,
-#                 DVD TEXT,
-#                 boxoffice REAL,
-#                 production TEXT,
-#                 website TEXT,
-#                 PRIMARY KEY (title, year)
-#                 );
-#             """)
-#     except sqlite3.OperationalError:
-#         print(f'Database with table {self.movies_table} exists.')
-#         raise
