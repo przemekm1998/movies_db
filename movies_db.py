@@ -32,9 +32,9 @@ class DBConfig:
         # Statement execution
         try:
             self.c.execute(sql_statement)
-        except sqlite3.OperationalError:
+        except sqlite3.OperationalError as e:
             # Not existing column
-            raise
+            raise e
 
         results = self.c.fetchall()
 
@@ -212,8 +212,8 @@ class DataUpdater(CommandHandler):
                                    'imdbVotes': votes_to_insert,
                                    'boxoffice': money_to_insert
                                    })
-        except KeyError:
-            raise
+        except KeyError as e:
+            raise e
 
     def na_to_null(self, column):
         """
