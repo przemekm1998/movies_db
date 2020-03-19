@@ -54,7 +54,7 @@ class CLInterface(object):
 
         # Writing csv
         parser.add_argument('--write_csv', help='saving results as csv file',
-                            action='store_true')
+                            action='store_true', const=False)
 
         # Writing csv
         parser.add_argument('--db_name', help='select the db', action='store',

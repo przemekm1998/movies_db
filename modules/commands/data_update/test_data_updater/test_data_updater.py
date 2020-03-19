@@ -2,14 +2,16 @@ import json
 import sqlite3
 
 import pytest
-from movies_db import DataUpdater, DBConfig
+
+from modules.commands.data_update.data_update import DataUpdater
+from modules.db_config.db_config import DBConfig
 
 
 @pytest.fixture(scope='module')
 def database():
     """ Setup of the database before tests """
 
-    db = DBConfig(db_name='resources/movies_test.sqlite')  # Creating new db
+    db = DBConfig(db_name='/home/przemek/PycharmProjects/movies_db/modules/commands/data_update/test_data_updater/resources/movies_test.sqlite')  # Creating new db
     with db.conn:
         db.c.execute("""CREATE TABLE IF NOT EXISTS MOVIES (
                     ID INTEGER PRIMARY KEY,
@@ -119,6 +121,6 @@ def test_download_data(downloaded_data):
     """
 
     # Checking json data corectness
-    with open('resources/json_movies.json', 'r') as correct_file:
+    with open('/home/przemek/PycharmProjects/movies_db/modules/commands/data_update/test_data_updater/resources/json_movies.json', 'r') as correct_file:
         correct_json = json.load(correct_file)
         assert correct_json == downloaded_data[0]

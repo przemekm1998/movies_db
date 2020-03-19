@@ -1,14 +1,17 @@
 import sqlite3
 
 import pytest
-from movies_db import Main, DataUpdater, DBConfig, DataSorter, DataFilter, DataCompare, DataInsert, DataDelete
+
+from modules.commands.data_update.data_update import DataUpdater
+from modules.db_config.db_config import DBConfig
+from movies_db import Main
 
 
 @pytest.fixture(scope='module')
 def database():
     """ Setup of the database before tests """
 
-    db = DBConfig(db_name='resources/movies_test.sqlite')  # Creating new db
+    db = DBConfig(db_name='/home/przemek/PycharmProjects/movies_db/Tests/test_main/resources/movies_test.sqlite')  # Creating new db
     with db.conn:
         db.c.execute("""CREATE TABLE IF NOT EXISTS MOVIES (
                     ID INTEGER PRIMARY KEY,
@@ -53,6 +56,7 @@ def commands_working():
     commands['filter_by'] = ['language', 'English']
     commands['compare'] = ['box_office', 'Memento', 'The Shawshank Redemption']
     commands['insert'] = ['Kac Wawa', '1917']
+    commands['write_csv'] = False
 
     yield commands
 
@@ -61,11 +65,21 @@ def commands_working():
 def handlers(database):
     """ Fixture of handlers to test """
 
-    handlers = [DataUpdater(database), DataSorter(database), DataFilter(database),
-                DataCompare(database), DataInsert(database), DataDelete(database)]
+    handlers = [DataUpdater(database)]
+
+    # handlers = [DataUpdater(database), DataSorter(database), DataFilter(database),
+    #             DataCompare(database), DataInsert(database), DataDelete(database)]
 
     yield handlers
 
 
 def test_handle_commands(commands_working, handlers):
+    from timeit import default_timer as timer
+    from datetime import timedelta
+
+    start = timer()
     Main.handle_commands(commands_working, handlers)
+
+    end = timer()
+    print(timedelta(seconds=end - start))
+

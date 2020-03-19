@@ -89,8 +89,9 @@ class Main:
         :return:
         """
 
-        list_of_commands = commands.keys()
-        write_csv = list_of_commands.pop('write_csv')
+        list_of_commands = tuple([command for command in commands.keys()
+                                  if command != 'write_csv'])
+        write_csv = commands['write_csv']
 
         for key in list_of_commands:
 

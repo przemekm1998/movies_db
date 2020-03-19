@@ -1,3 +1,4 @@
+import concurrent.futures
 import sqlite3
 from decimal import Decimal
 from re import sub
@@ -65,10 +66,12 @@ class DataUpdater(CommandHandler):
             empty_titles = [title['Title'] for title in empty_titles]
 
             # Downloading data for empty titles using API
-            api_data = self.download_data(empty_titles)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                api_data = executor.map(self.download_data, empty_titles)
 
             # Updating database with downloaded data
-            results = self.update_data(api_data)
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                results = [executor.map(self.update_data, api_data)]
 
             # Changing box office N/A value to null for further conveniance
             self.na_to_null('box_office')
