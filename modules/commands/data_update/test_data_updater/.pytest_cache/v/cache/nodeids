@@ -1,0 +1,9 @@
+[
+  "test_data_updater.py::test_empty_titles",
+  "test_data_updater.py::test_download_data",
+  "test_data_updater.py::test_empty_titles[0-The Shawshank Redemption]",
+  "test_data_updater.py::test_empty_titles[1-Memento]",
+  "test_data_updater.py::test_empty_titles[2-In Bruges]",
+  "test_data_updater.py::test_empty_titles[3-Gods]",
+  "test_data_updater.py::test_empty_titles[4-The Godfather]"
+]

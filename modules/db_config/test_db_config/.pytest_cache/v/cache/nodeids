@@ -1,0 +1,13 @@
+[
+  "test_db_config.py::test_db_create",
+  "test_db_config.py::test_insert_data",
+  "test_db_config.py::test_get_data_by_title",
+  "test_db_config.py::test_get_data_sort_by",
+  "test_db_config.py::test_write_csv",
+  "test_db_config.py::test_filter_data",
+  "test_db_config.py::test_get_titles",
+  "test_db_config.py::test_download_data",
+  "test_db_config.py::test_update_data",
+  "test_db_config.py::test_compare",
+  "test_db_config.py::test_execute_statement"
+]

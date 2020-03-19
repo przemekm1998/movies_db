@@ -8,4 +8,4 @@ def test_get_args():
 
     interface = CLInterface().get_args()  # Getting list of titles
 
-    yield interfac
+    yield interface
