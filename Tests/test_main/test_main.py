@@ -2,6 +2,11 @@ import sqlite3
 
 import pytest
 
+from modules.commands.data_compare.data_compare import DataCompare
+from modules.commands.data_delete.data_delete import DataDelete
+from modules.commands.data_filter.data_filter import DataFilter
+from modules.commands.data_insert.data_insert import DataInsert
+from modules.commands.data_sort.data_sort import DataSorter
 from modules.commands.data_update.data_update import DataUpdater
 from modules.db_config.db_config import DBConfig
 from movies_db import Main
@@ -65,10 +70,8 @@ def commands_working():
 def handlers(database):
     """ Fixture of handlers to test """
 
-    handlers = [DataUpdater(database)]
-
-    # handlers = [DataUpdater(database), DataSorter(database), DataFilter(database),
-    #             DataCompare(database), DataInsert(database), DataDelete(database)]
+    handlers = [DataUpdater(database), DataSorter(database), DataFilter(database),
+                DataCompare(database), DataInsert(database), DataDelete(database)]
 
     yield handlers
 
