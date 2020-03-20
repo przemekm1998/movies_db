@@ -1,5 +1,7 @@
+import concurrent
 import json
 import sqlite3
+from pprint import pprint as pp
 
 import pytest
 
@@ -11,7 +13,8 @@ from modules.db_config.db_config import DBConfig
 def database():
     """ Setup of the database before tests """
 
-    db = DBConfig(db_name='/home/przemek/PycharmProjects/movies_db/modules/commands/data_update/test_data_updater/resources/movies_test.sqlite')  # Creating new db
+    db = DBConfig(
+        db_name='/home/przemek/PycharmProjects/movies_db/modules/commands/data_update/test_data_updater/resources/movies_test.sqlite')  # Creating new db
     with db.conn:
         db.c.execute("""CREATE TABLE IF NOT EXISTS MOVIES (
                     ID INTEGER PRIMARY KEY,
@@ -91,7 +94,9 @@ def downloaded_data(data_updater, empty_titles):
     """
 
     # Setup
-    downloaded_data = data_updater.download_data(empty_titles)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        downloaded_data = executor.map(data_updater.download_data, empty_titles)
+
     yield downloaded_data
 
     # Teardown
@@ -121,6 +126,24 @@ def test_download_data(downloaded_data):
     """
 
     # Checking json data corectness
-    with open('/home/przemek/PycharmProjects/movies_db/modules/commands/data_update/test_data_updater/resources/json_movies.json', 'r') as correct_file:
+    # Ignore assertion error if imdbVotes doesn't match
+    with open(
+            '/home/przemek/PycharmProjects/movies_db/modules/commands/data_update/test_data_updater/resources/json_movies.json',
+            'r') as correct_file:
         correct_json = json.load(correct_file)
-        assert correct_json == downloaded_data[0]
+        assert correct_json == next(downloaded_data)[0]
+
+
+def test_update_data(data_updater, downloaded_data):
+    """
+    Test inserting the data to db
+    :param data_updater:
+    :param downloaded_data:
+    :return:
+    """
+    results = data_updater.update_data(downloaded_data)
+    assert results == [{'Title': 'Memento', 'Status': 'Updated'},
+                       {'Title': 'In Bruges', 'Status': 'Updated'},
+                       {'Title': 'Gods', 'Status': 'Updated'},
+                       {'Title': 'The Godfather', 'Status': 'Updated'},
+                       {'Error': 'Movie not found!', 'Response': 'False'}]

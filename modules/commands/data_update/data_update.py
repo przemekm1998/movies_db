@@ -70,29 +70,30 @@ class DataUpdater(CommandHandler):
                 api_data = executor.map(self.download_data, empty_titles)
 
             # Updating database with downloaded data
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                results = [executor.map(self.update_data, api_data)]
+            results = self.update_data(api_data)
 
             # Changing box office N/A value to null for further conveniance
             self.na_to_null('box_office')
 
         return results
 
-    def download_data(self, titles):
+    def download_data(self, title):
         """
         Downloading data using API
-        :param titles:
+        :param title:
         :return:
         """
 
-        for title in titles:
-            payload = {'t': title,
-                       'r': 'json'}  # Get full data based on title in json format
-            respond = requests.get(f'http://www.omdbapi.com/?apikey={self.api_key}',
-                                   params=payload).json()
-            self.results.append(respond)
+        results = []
 
-        return self.results
+        payload = {'t': title,
+                   'r': 'json'}  # Get full data based on title in json format
+        respond = requests.get(f'http://www.omdbapi.com/?apikey={self.api_key}',
+                               params=payload).json()
+
+        results.append(respond)
+
+        return results
 
     def update_data(self, downloaded_results):
         """
@@ -103,12 +104,13 @@ class DataUpdater(CommandHandler):
 
         for result in downloaded_results:
 
-            # Insert data
+            data = result[0]  # Extracting the downloaded data from array
+
             try:
-                self.insert_data(result)
-                info = {'Title': result['Title'], 'Status': 'Updated'}
+                self.insert_data(data)
+                info = {'Title': data['Title'], 'Status': 'Updated'}
             except KeyError:
-                info = {'Title': result['Title'], 'Status': 'Not Found'}
+                info = {'Error': data['Error'], 'Response': data['Response']}
 
             self.results.append(info)
 
